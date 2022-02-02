@@ -1,2 +1,3 @@
-# binance
+# Binance
+
 Binance API Client
