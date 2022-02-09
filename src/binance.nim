@@ -4,7 +4,7 @@ import std/[strutils, uri, times]
 type
   Binance* = object  ## Binance API Client.
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
-    recvWindow*: 5_000..60_000   ## Timeout "tolerance" for requests.
+    recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
 
   HistoricalKlinesType* = enum
     SPOT    = 1
