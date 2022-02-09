@@ -164,6 +164,7 @@ proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: Re
 
 when isMainModule:
   import std/httpclient
+  # TODO: probar esto, no se si funciona, probar con el endpoint de ping y time.
   let client = newHttpClient()
   let binance = newBinance("", "")
   client.headers.add "X-MBX-APIKEY", binance.apiKey
