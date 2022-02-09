@@ -1,3 +1,0 @@
-# Binance
-
-Binance API Client
