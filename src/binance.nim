@@ -188,6 +188,7 @@ API de Binance observaciones:
 - El `signature` va en el query_string al final.
 - El `timestamp` es el tiempo en UTC en milisegundos.
 - Usar la "Testnet" para pruebas y desarrollo.
+- Si algo no se entiende ver como lo hacen en https://github.com/sammchardy/python-binance
 
 
 TODO:
