@@ -4,6 +4,7 @@ import std/[strutils, uri, times]
 type
   Binance* = object  ## Binance API Client.
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
+    recvWindow*: 5_000..60_000   ## Timeout "tolerance" for requests.
 
   HistoricalKlinesType* = enum
     SPOT    = 1
@@ -117,11 +118,7 @@ const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https:
 
 func newBinance*(apiKey, apiSecret: string): Binance {.inline.} =
   ## Constructor for Binance client.
-  Binance(apiKey: apiKey, apiSecret: apiSecret)
-
-template newDefaultHeaders(apiKey: static[string]): array[1, (string, string)] =
-  ## Binance API requires a `X-MBX-APIKEY` header with the `apiKey` (Not the Secret).
-  [("X-MBX-APIKEY", apiKey)]  # Es util esto ???.
+  Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000)
 
 
 proc sha256(queryString, apiSecret: string): string =
@@ -150,13 +147,13 @@ proc time*(_: Binance): string =
 proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
     timeInForce, newClientOrderId, symbol: string;
     quantity, quoteOrderQty, price, stopPrice, icebergQty: float;
-    recvWindow: 5_000..60_000 = 10_000): string =
+    ): string =
 
   let queryString: string = encodeQuery({
     "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce, "quantity": $quantity,
     "quoteOrderQty": $quoteOrderQty, "price": $price, "stopPrice": $stopPrice, "icebergQty": $icebergQty,
-    "recvWindow": $recvWindow, "newClientOrderId": newClientOrderId, "newOrderRespType": $newOrderRespType,
-    "timestamp": genTimestamp()
+    "newClientOrderId": newClientOrderId, "newOrderRespType": $newOrderRespType,
+    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
   })
   let signature: string = sha256(queryString, self.apiSecret)
 
