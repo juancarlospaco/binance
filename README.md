@@ -3,6 +3,8 @@
 
 ![](binance.jpg)
 
+![Build](https://github.com/juancarlospaco/binance/actions/workflows/build.yml/badge.svg)
+
 
 # Requisites
 
