@@ -1,6 +1,5 @@
 # Binance
 
-
 ![](binance.jpg)
 
 ![](https://github.com/juancarlospaco/binance/actions/workflows/build.yml/badge.svg)
@@ -21,3 +20,8 @@
 # Stars
 
 ![](https://starchart.cc/juancarlospaco/binance.svg)
+
+
+# More
+
+- See also https://github.com/juancarlospaco/tradingview#tradingview
