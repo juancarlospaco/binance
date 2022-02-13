@@ -134,10 +134,14 @@ proc genTimestamp(): string =
 
 # Market Data
 
+#GET /api/v3/ping
+#Test connectivity to the Rest API.
 func ping*(_: Binance): string =
   ## Test connectivity to Binance, just a ping.
   result = static(binanceAPIUrl & "/api/v3/ping")
 
+#GET /api/v3/time
+#Test connectivity to the Rest API and get the current server time.
 proc time*(_: Binance): string =
   ## Get current Binance API server time.
   result = static(binanceAPIUrl & "/api/v3/time")
@@ -146,7 +150,7 @@ proc time*(_: Binance): string =
 # Account Trade
 
 #GET /api/v3/order
-#pendiente, algun problema con la cantidad de parametros
+#Check an order's status
 proc getOrder*(self: Binance, symbol:string, orderId:uint = 1, origClientOrderId: uint = 1):string =
   var queryString: string = encodeQuery({
     "symbol": symbol, "orderID": $orderId, "origClientOrderId": $origClientOrderId,
@@ -156,6 +160,7 @@ proc getOrder*(self: Binance, symbol:string, orderId:uint = 1, origClientOrderId
   signQueryString(self.apiSecret, queryString, "order")
 
 #POST /api/v3/order
+#Send in a new order.
 proc postOrder*(self: Binance, side:Side, tipe: OrderType, timeInForce,symbol:string, quantity, price:float):string =
   var queryString: string = encodeQuery({
     "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce,
@@ -166,6 +171,8 @@ proc postOrder*(self: Binance, side:Side, tipe: OrderType, timeInForce,symbol:st
   signQueryString(self.apiSecret, queryString, "order")
 
 #POST /api/v3/order/test
+#Test new order creation and signature/recvWindow long. 
+#Creates and validates a new order but does not send it into the matching engine
 proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
     timeInForce, newClientOrderId, symbol: string;
     quantity, price: float;
@@ -183,11 +190,22 @@ proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: Re
 #GET /api/v3/account
 #Get the current account information
 proc accountData*(self: Binance): string = 
-   var queryString: string = encodeQuery({
+  var queryString: string = encodeQuery({
      "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-   })
+  })
   
-   signQueryString(self.apiSecret, queryString, "account")
+  signQueryString(self.apiSecret, queryString, "account")
+
+#GET /api/v3/myTrades
+#Get trades for a specific account and symbol.
+proc myTrades*(self: Binance, symbol:string):string =
+  var queryString: string = encodeQuery({
+     "symbol": symbol,
+     "recvWindow": $self.recvWindow, 
+     "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "myTrades")
 
 
 proc request*(b: Binance, endpoint:string, httpMethod:string = "GET"):string =
