@@ -1,4 +1,4 @@
-import std/[strutils, uri, times, httpclient]
+import std/[strutils, uri, times, httpclient, os]
 import hmac_sha256 
 
 type
@@ -122,6 +122,8 @@ proc newBinance*(apiKey, apiSecret: string): Binance {.inline.} =
   Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
 
 proc getContent*(b: Binance, url: string): string = b.client.getContent(url)
+
+proc env*(value:string):string {.inline .} = getEnv(value)
 
 proc signQueryString(apiSecret, queryString: string, endpoint:string):string {. inline .} =
   let signature:string = sha256.hmac(apiSecret, queryString)
