@@ -209,6 +209,14 @@ proc myTrades*(self: Binance, symbol:string):string =
 
   signQueryString(self.apiSecret, queryString, "myTrades")
 
+#GET /api/v3/rateLimit/order
+proc rateLimitOrder*(self: Binance): string =
+  var queryString: string = encodeQuery({
+     "recvWindow": $self.recvWindow,
+     "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "rateLimit/order")
 
 proc request*(b: Binance, endpoint:string, httpMethod:string = "GET"):string =
   if toUpperAscii(httpMethod) == "POST": 
