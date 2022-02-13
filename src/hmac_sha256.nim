@@ -351,7 +351,7 @@ proc hmac*[A: bchar, B: bchar](HashType: typedesc, key: openArray[A], data: open
   var ctx: HMAC
   ctx.init key
   ctx.mdctx.update data
-  var result_data:array[32, byte]
+  var result_data: array[32, byte]
   ctx.finish result_data
   var res = newString((len(result_data) shl 1))
   discard bytesToHex(result_data, res, {})
