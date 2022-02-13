@@ -219,6 +219,18 @@ proc rateLimitOrder*(self: Binance): string =
 
   signQueryString(self.apiSecret, queryString, "rateLimit/order")
 
+#GET /api/v3/orderList
+#Retrieves all OCO based on provided optional parameters
+proc orderList*(self: Binance, orderListId:uint = 1):string = 
+  var queryString: string = encodeQuery({
+     "orderListId": $orderListId,
+     "recvWindow": $self.recvWindow,
+     "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "orderList")
+
+
 #GET /api/v3/allOrderList
 #Retrieves all OCO based on provided optional parameters
 proc allOrderList*(self: Binance):string = 
