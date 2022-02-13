@@ -49,4 +49,3 @@ echo client.request(preparedEndpoint) & "\n"
 echo "GET -> api/v3/orderList"
 preparedEndpoint = client.orderList(1)
 echo client.request(preparedEndpoint) & "\n"
-
