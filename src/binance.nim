@@ -258,7 +258,7 @@ proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet)
   self.client.request(endpoint, httpMethod = httpMethod).body
 
 
-runnableExamples"-d:ssl -d:nimDisableCertificateValidation":
+runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   from std/os import getEnv
   let client: Binance = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
   let preparedEndpoint: string = binance.ping()
