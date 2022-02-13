@@ -1,3 +1,6 @@
+from std/strutils import toLowerAscii
+
+
 type
   HexFlags {.pure.} = enum
     LowerCase,  ## Produce lowercase hexadecimal characters
@@ -59,7 +62,7 @@ elif defined(vcc):
   proc swapBytesBuiltin(a: uint64): uint64 {.importc: "_byteswap_uint64", cdecl, header: "<intrin.h>".}
 
 
-template copyMem[A, B](dst: var openarray[A], dsto: int, src: openarray[B], srco: int, length: int) =
+template copyMem[A, B](dst: var openArray[A], dsto: int, src: openArray[B], srco: int, length: int) =
   copyMem(addr dst[dsto], unsafeAddr src[srco], length * sizeof(B))
 
 template ROR(x: uint32, n: int): uint32 =
@@ -98,14 +101,14 @@ template leSwap32(a: uint32): uint32 =
   else:
     swapBytesBuiltin(a)
 
-template beLoad32[T: byte|char](src: openarray[T], srco: int): uint32 =
+template beLoad32[T: byte|char](src: openArray[T], srco: int): uint32 =
   var p = cast[ptr uint32](unsafeAddr src[srco])[]
   leSwap32(p)
 
-template beStore32*(dst: var openarray[byte], so: int, v: uint32) =
+template beStore32*(dst: var openArray[byte], so: int, v: uint32) =
   cast[ptr uint32](addr dst[so])[] = leSwap32(v)
 
-proc sha256Transform(state: var array[8, uint32], data: openarray[byte]) =
+proc sha256Transform(state: var array[8, uint32], data: openArray[byte]) =
   var
     t0, t1: uint32
     W {.noinit.}: array[64, uint32]
@@ -208,7 +211,7 @@ proc sha256Transform(state: var array[8, uint32], data: openarray[byte]) =
   state[6] = state[6] + s6
   state[7] = state[7] + s7
 
-proc update[T: bchar](ctx: var SHA256, data: openarray[T])=
+proc update[T: bchar](ctx: var SHA256, data: openArray[T])=
   var pos = 0
   var length = len(data)
 
@@ -236,7 +239,7 @@ proc init(ctx: var SHA256) =
   ctx.state[6] = 0x1F83D9AB'u32
   ctx.state[7] = 0x5BE0CD19'u32
 
-proc init[M](hmctx: var HMAC, key: openarray[M]) =
+proc init[M](hmctx: var HMAC, key: openArray[M]) =
   var kpad: hmctx.ipad.type
   hmctx.mdctx = sha256()
   hmctx.opadctx = sha256()
@@ -270,7 +273,7 @@ proc finalize256(ctx: var SHA256) {. inline .} =
   beStore32(ctx.buffer, 60, ctx.count[0])
   sha256Transform(ctx.state, ctx.buffer)
 
-proc finish*(ctx: var SHA256, data: var openarray[byte]):uint {.inline .} =
+proc finish*(ctx: var SHA256, data: var openArray[byte]):uint {.inline .} =
   finalize256(ctx)
   beStore32(data, 0, ctx.state[0])
   beStore32(data, 4, ctx.state[1])
@@ -283,7 +286,7 @@ proc finish*(ctx: var SHA256, data: var openarray[byte]):uint {.inline .} =
   result = 32
 
 
-proc finish[T: bchar](hmctx: var HMAC, data: var openarray[T]) {.inline.} =
+proc finish[T: bchar](hmctx: var HMAC, data: var openArray[T]) {.inline.} =
   var buffer: array[32, byte]
   discard finish(hmctx.mdctx, buffer)
   hmctx.opadctx.update(buffer)
@@ -313,7 +316,7 @@ proc hexDigit(x: int, lowercase: bool = false): char =
   char(0x30'u32 + uint32(x) + (off and not((uint32(x) - 10) shr 8)))
 
 
-proc bytesToHex(src: openarray[byte], dst: var openarray[char], flags: set[HexFlags]): int =
+proc bytesToHex(src: openArray[byte], dst: var openArray[char], flags: set[HexFlags]): int =
   if len(dst) == 0:
     (len(src) shl 1)
   else:
@@ -344,7 +347,7 @@ proc bytesToHex(src: openarray[byte], dst: var openarray[char], flags: set[HexFl
     k
 
 
-proc hmac*[A: bchar, B: bchar](HashType: typedesc, key: openarray[A],data: openarray[B]):string =
+proc hmac*[A: bchar, B: bchar](HashType: typedesc, key: openArray[A], data: openArray[B]): string =
   var ctx: HMAC
   ctx.init key
   ctx.mdctx.update data
