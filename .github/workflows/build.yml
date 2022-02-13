@@ -27,11 +27,8 @@ jobs:
 
     - name: Build docs
       shell: bash
-      run: |
-        cd src
-        for i in *.nim; do
-          $CMD $i
-        done
+      run: $CMD src/binance.nim
+
 
     - name: Clean out
       shell: bash
