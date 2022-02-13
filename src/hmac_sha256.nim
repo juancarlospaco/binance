@@ -8,8 +8,8 @@ type
   bchar = byte | char
 
   SHA256 = object
-    bits:int # 256
-    block_size:int # block-size 64
+    bits: int       # 256
+    block_size: int # block-size 64
     count: array[2, uint32]
     state: array[8, uint32]
     buffer: array[64,byte]
@@ -43,33 +43,23 @@ const
   ]
 
 when defined(gcc) or defined(llvm_gcc) or defined(clang):
-  func swapBytesBuiltin(x: uint8): uint8 = x
-  func swapBytesBuiltin(x: uint16): uint16 {.
-      importc: "__builtin_bswap16", nodecl.}
-  func swapBytesBuiltin(x: uint32): uint32 {.
-      importc: "__builtin_bswap32", nodecl.}
-  func swapBytesBuiltin(x: uint64): uint64 {.
-      importc: "__builtin_bswap64", nodecl.}
-
+  func swapBytesBuiltin(x: uint8 ): uint8 = x
+  func swapBytesBuiltin(x: uint16): uint16 {.importc: "__builtin_bswap16", nodecl.}
+  func swapBytesBuiltin(x: uint32): uint32 {.importc: "__builtin_bswap32", nodecl.}
+  func swapBytesBuiltin(x: uint64): uint64 {.importc: "__builtin_bswap64", nodecl.}
 elif defined(icc):
-  func swapBytesBuiltin(x: uint8): uint8 = x
+  func swapBytesBuiltin(x: uint8 ): uint8 = x
   func swapBytesBuiltin(a: uint16): uint16 {.importc: "_bswap16", nodecl.}
-  func swapBytesBuiltin(a: uint32): uint32 {.importc: "_bswap", nodec.}
+  func swapBytesBuiltin(a: uint32): uint32 {.importc: "_bswap",   nodec.}
   func swapBytesBuiltin(a: uint64): uint64 {.importc: "_bswap64", nodecl.}
-
 elif defined(vcc):
-  func swapBytesBuiltin(x: uint8): uint8 = x
-  proc swapBytesBuiltin(a: uint16): uint16 {.
-      importc: "_byteswap_ushort", cdecl, header: "<intrin.h>".}
-  proc swapBytesBuiltin(a: uint32): uint32 {.
-      importc: "_byteswap_ulong", cdecl, header: "<intrin.h>".}
-  proc swapBytesBuiltin(a: uint64): uint64 {.
-      importc: "_byteswap_uint64", cdecl, header: "<intrin.h>".}
+  func swapBytesBuiltin(x: uint8 ): uint8 = x
+  proc swapBytesBuiltin(a: uint16): uint16 {.importc: "_byteswap_ushort", cdecl, header: "<intrin.h>".}
+  proc swapBytesBuiltin(a: uint32): uint32 {.importc: "_byteswap_ulong",  cdecl, header: "<intrin.h>".}
+  proc swapBytesBuiltin(a: uint64): uint64 {.importc: "_byteswap_uint64", cdecl, header: "<intrin.h>".}
 
 
-template copyMem[A, B](dst: var openarray[A], dsto: int,
-                        src: openarray[B], srco: int,
-                        length: int) =
+template copyMem[A, B](dst: var openarray[A], dsto: int, src: openarray[B], srco: int, length: int) =
   copyMem(addr dst[dsto], unsafeAddr src[srco], length * sizeof(B))
 
 template ROR(x: uint32, n: int): uint32 =
@@ -111,7 +101,7 @@ template leSwap32(a: uint32): uint32 =
 template beLoad32[T: byte|char](src: openarray[T], srco: int): uint32 =
   var p = cast[ptr uint32](unsafeAddr src[srco])[]
   leSwap32(p)
-  
+
 template beStore32*(dst: var openarray[byte], so: int, v: uint32) =
   cast[ptr uint32](addr dst[so])[] = leSwap32(v)
 
@@ -120,11 +110,11 @@ proc sha256Transform(state: var array[8, uint32], data: openarray[byte]) =
     t0, t1: uint32
     W {.noinit.}: array[64, uint32]
 
-  W[0] = beLoad32(data, 0); W[1] = beLoad32(data, 4);
-  W[2] = beLoad32(data, 8); W[3] = beLoad32(data, 12)
-  W[4] = beLoad32(data, 16); W[5] = beLoad32(data, 20)
-  W[6] = beLoad32(data, 24); W[7] = beLoad32(data, 28)
-  W[8] = beLoad32(data, 32); W[9] = beLoad32(data, 36)
+  W[0]  = beLoad32(data, 0); W[1]   = beLoad32(data, 4);
+  W[2]  = beLoad32(data, 8); W[3]   = beLoad32(data, 12)
+  W[4]  = beLoad32(data, 16); W[5]  = beLoad32(data, 20)
+  W[6]  = beLoad32(data, 24); W[7]  = beLoad32(data, 28)
+  W[8]  = beLoad32(data, 32); W[9]  = beLoad32(data, 36)
   W[10] = beLoad32(data, 40); W[11] = beLoad32(data, 44)
   W[12] = beLoad32(data, 48); W[13] = beLoad32(data, 52)
   W[14] = beLoad32(data, 56); W[15] = beLoad32(data, 60)
@@ -221,7 +211,7 @@ proc sha256Transform(state: var array[8, uint32], data: openarray[byte]) =
 proc update[T: bchar](ctx: var SHA256, data: openarray[T])=
   var pos = 0
   var length = len(data)
-  
+
   while length > 0:
     let offset = int(ctx.count[0] and 0x3f)
     let size = min(64 - offset, length)
@@ -289,9 +279,9 @@ proc finish*(ctx: var SHA256, data: var openarray[byte]):uint {.inline .} =
   beStore32(data, 16, ctx.state[4])
   beStore32(data, 20, ctx.state[5])
   beStore32(data, 24, ctx.state[6])
-  beStore32(data, 28, ctx.state[7])  
+  beStore32(data, 28, ctx.state[7])
   result = 32
-  
+
 
 proc finish[T: bchar](hmctx: var HMAC, data: var openarray[T]) {.inline.} =
   var buffer: array[32, byte]
@@ -323,8 +313,7 @@ proc hexDigit(x: int, lowercase: bool = false): char =
   char(0x30'u32 + uint32(x) + (off and not((uint32(x) - 10) shr 8)))
 
 
-proc bytesToHex(src: openarray[byte], dst: var openarray[char],
-                 flags: set[HexFlags]): int =
+proc bytesToHex(src: openarray[byte], dst: var openarray[char], flags: set[HexFlags]): int =
   if len(dst) == 0:
     (len(src) shl 1)
   else:
@@ -352,7 +341,6 @@ proc bytesToHex(src: openarray[byte], dst: var openarray[char],
       let x = int(src[srclen])
       dst[k + 0] = hexDigit(x shr 4, lowercase)
       inc(k)
-
     k
 
 
