@@ -1,4 +1,4 @@
-import std/[strutils, uri, times, httpclient, macros]
+import std/[strutils, uri, times, httpclient]
 import hmac_sha256 
 
 type
@@ -123,8 +123,16 @@ proc newBinance*(apiKey, apiSecret: string): Binance {.inline.} =
 
 proc getContent*(b: Binance, url: string): string = b.client.getContent(url)
 
+proc signQueryString(apiSecret, queryString: string, endpoint:string):string {. inline .} =
+  let signature:string = sha256.hmac(apiSecret, queryString)
+  result = binanceAPIUrl & "/api/v3/" &  endpoint & "?"
+  result.add queryString
+  result.add "&signature=" & signature
+
 proc genTimestamp(): string =
   result = $(now().utc().toTime().toUnix() * 1000)
+
+# Market Data
 
 func ping*(_: Binance): string =
   ## Test connectivity to Binance, just a ping.
@@ -134,6 +142,30 @@ proc time*(_: Binance): string =
   ## Get current Binance API server time.
   result = static(binanceAPIUrl & "/api/v3/time")
 
+
+# Account Trade
+
+#GET /api/v3/order
+#pendiente, algun problema con la cantidad de parametros
+proc getOrder*(self: Binance, symbol:string, orderId:uint = 1, origClientOrderId: uint = 1):string =
+  var queryString: string = encodeQuery({
+    "symbol": symbol, "orderID": $orderId, "origClientOrderId": $origClientOrderId,
+    "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "order")
+
+#POST /api/v3/order
+proc postOrder*(self: Binance, side:Side, tipe: OrderType, timeInForce,symbol:string, quantity, price:float):string =
+  var queryString: string = encodeQuery({
+    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce,
+    "quantity": $quantity, "price": $price,
+    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "order")
+
+#POST /api/v3/order/test
 proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
     timeInForce, newClientOrderId, symbol: string;
     quantity, price: float;
@@ -146,14 +178,24 @@ proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: Re
     "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
   })
 
-  let signature:string = $sha256.hmac(self.apiSecret, queryString)
-  
-  result = static(binanceAPIUrl & "/api/v3/order/test?")
-  result.add queryString
-  result.add "&signature=" & signature
+  signQueryString(self.apiSecret, queryString, "order/test")
 
-template request*(b: Binance, endpoint:string):string =
-  b.client.request(endpoint, httpMethod = HttpPOST).body
+#GET /api/v3/account
+#Get the current account information
+proc accountData*(self: Binance): string = 
+   var queryString: string = encodeQuery({
+     "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
+   })
+  
+   signQueryString(self.apiSecret, queryString, "account")
+
+
+proc request*(b: Binance, endpoint:string, httpMethod:string = "GET"):string =
+  if toUpperAscii(httpMethod) == "POST": 
+    b.client.request(endpoint, httpMethod = HttpPOST).body
+  else:
+    b.client.request(endpoint).body
+
 
 when isMainModule:
   import std/httpclient
