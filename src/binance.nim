@@ -1,10 +1,11 @@
-import std/[strutils, uri, times]
-
+import std/[strutils, uri, times, httpclient, macros]
+import hmac_sha256 
 
 type
   Binance* = object  ## Binance API Client.
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
     recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
+    client: HttpClient
 
   HistoricalKlinesType* = enum
     SPOT    = 1
@@ -112,29 +113,18 @@ type
     MINING_TO_USDT_FUTURE = "MINING_UMFUTURE"
     MINING_TO_FIAT = "MINING_C2C"
 
-
 const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https://api.binance.com"   `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
 
-
-func newBinance*(apiKey, apiSecret: string): Binance {.inline.} =
+proc newBinance*(apiKey, apiSecret: string): Binance {.inline.} =
   ## Constructor for Binance client.
-  Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000)
+  var client = newHttpClient()
+  client.headers.add "X-MBX-APIKEY", apiKey
+  Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
 
-
-proc sha256(queryString, apiSecret: string): string =
-  # TODO:
-  # Get code to do sha256 from somewhere?, preferably in pure Nim so it can compile to JS and C.
-  # Needs SHA256, see  https://github.com/sammchardy/python-binance/blob/master/binance/client.py#L223
-  #
-  # Pseudocode:
-  # result = sha256( API_SECRET + QUERY_STRING ).hexdigest()
-  result = apiSecret  # Placeholder.
+proc getContent*(b: Binance, url: string): string = b.client.getContent(url)
 
 proc genTimestamp(): string =
-  # TODO:
-  # return current time UTC Timestamp in miliseconds as string.
-  result = now().utc.format"ffffff"  # Chequear si esto es correcto ???, probablemente no.
-
+  result = $(now().utc().toTime().toUnix() * 1000)
 
 func ping*(_: Binance): string =
   ## Test connectivity to Binance, just a ping.
@@ -146,21 +136,24 @@ proc time*(_: Binance): string =
 
 proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
     timeInForce, newClientOrderId, symbol: string;
-    quantity, quoteOrderQty, price, stopPrice, icebergQty: float;
+    quantity, price: float;
     ): string =
 
-  let queryString: string = encodeQuery({
+  var queryString: string = encodeQuery({
     "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce, "quantity": $quantity,
-    "quoteOrderQty": $quoteOrderQty, "price": $price, "stopPrice": $stopPrice, "icebergQty": $icebergQty,
+    "price": $price,
     "newClientOrderId": newClientOrderId, "newOrderRespType": $newOrderRespType,
     "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
   })
-  let signature: string = sha256(queryString, self.apiSecret)
 
-  result = static(binanceAPIUrl & "/api/v3/order/test")
+  let signature:string = $sha256.hmac(self.apiSecret, queryString)
+  
+  result = static(binanceAPIUrl & "/api/v3/order/test?")
   result.add queryString
-  result.add encodeQuery({"signature": signature})
+  result.add "&signature=" & signature
 
+template request*(b: Binance, endpoint:string):string =
+  b.client.request(endpoint, httpMethod = HttpPOST).body
 
 when isMainModule:
   import std/httpclient
