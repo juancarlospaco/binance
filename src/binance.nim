@@ -210,6 +210,7 @@ proc myTrades*(self: Binance, symbol:string):string =
   signQueryString(self.apiSecret, queryString, "myTrades")
 
 #GET /api/v3/rateLimit/order
+#Displays the user's current order count usage for all intervals.
 proc rateLimitOrder*(self: Binance): string =
   var queryString: string = encodeQuery({
      "recvWindow": $self.recvWindow,
@@ -217,6 +218,26 @@ proc rateLimitOrder*(self: Binance): string =
   })
 
   signQueryString(self.apiSecret, queryString, "rateLimit/order")
+
+#GET /api/v3/allOrderList
+#Retrieves all OCO based on provided optional parameters
+proc allOrderList*(self: Binance):string = 
+  var queryString: string = encodeQuery({
+     "recvWindow": $self.recvWindow,
+     "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "allOrderList")
+
+#GET /api/v3/openOrderList
+proc openOrderList*(self: Binance):string = 
+  var queryString: string = encodeQuery({
+     "recvWindow": $self.recvWindow,
+     "timestamp": genTimestamp()
+  })
+
+  signQueryString(self.apiSecret, queryString, "openOrderList")
+
 
 proc request*(b: Binance, endpoint:string, httpMethod:string = "GET"):string =
   if toUpperAscii(httpMethod) == "POST": 
