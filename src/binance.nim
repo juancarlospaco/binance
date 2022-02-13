@@ -1,4 +1,4 @@
-import std/[strutils, uri, times, httpclient, os]
+import std/[uri, times, httpclient, httpcore]
 import hmac_sha256
 
 
@@ -116,6 +116,10 @@ type
 
 const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https://api.binance.com"   `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
 
+
+template genTimestamp(): string = $(now().utc.toTime.toUnix * 1_000)
+
+
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
@@ -125,18 +129,25 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
 
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 
-proc env*(value:string):string {.inline .} = getEnv(value)
 
-proc signQueryString(apiSecret, queryString, endpoint: string): string {. inline .} =
+proc signQueryString(apiSecret, queryString, endpoint: string): string =
   let signature: string = sha256.hmac(apiSecret, queryString)
   result = static(binanceAPIUrl & "/api/v3/")
   result.add endpoint
   result.add '?'
   result.add queryString
-  result.add "&signature="
+  result.add '&'
+  result.add 's'
+  result.add 'i'
+  result.add 'g'
+  result.add 'n'
+  result.add 'a'
+  result.add 't'
+  result.add 'u'
+  result.add 'r'
+  result.add 'e'
+  result.add '='
   result.add signature
-
-template genTimestamp(): string = $(now().utc.toTime.toUnix * 1_000)
 
 
 # Market Data
@@ -160,8 +171,7 @@ proc time*(_: Binance): string =
 #Check an order's status
 proc getOrder*(self: Binance, symbol:string, orderId:uint = 1, origClientOrderId: uint = 1): string =
   var queryString: string = encodeQuery({
-    "symbol": symbol, "orderID": $orderId, "origClientOrderId": $origClientOrderId,
-    "timestamp": genTimestamp()
+    "symbol": symbol, "orderID": $orderId, "origClientOrderId": $origClientOrderId, "timestamp": genTimestamp()
   })
   signQueryString(self.apiSecret, queryString, "order")
 
@@ -170,9 +180,8 @@ proc getOrder*(self: Binance, symbol:string, orderId:uint = 1, origClientOrderId
 #Send in a new order.
 proc postOrder*(self: Binance, side:Side, tipe: OrderType, timeInForce,symbol:string, quantity, price:float): string =
   var queryString: string = encodeQuery({
-    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce,
-    "quantity": $quantity, "price": $price,
-    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
+    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce, "quantity": $quantity,
+    "price": $price, "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
   })
   signQueryString(self.apiSecret, queryString, "order")
 
@@ -184,10 +193,9 @@ proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: Re
     timeInForce, newClientOrderId, symbol: string; quantity, price: float): string =
 
   var queryString: string = encodeQuery({
-    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce, "quantity": $quantity,
-    "price": $price,
-    "newClientOrderId": newClientOrderId, "newOrderRespType": $newOrderRespType,
-    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
+    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce,
+    "quantity": $quantity, "price": $price, "newClientOrderId": newClientOrderId,
+    "newOrderRespType": $newOrderRespType, "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
   })
   signQueryString(self.apiSecret, queryString, "order/test")
 
@@ -245,48 +253,11 @@ proc openOrderList*(self: Binance):string =
   signQueryString(self.apiSecret, queryString, "openOrderList")
 
 
-proc request*(self: Binance, endpoint: string, httpMethod: string = "GET"): string =
-  if toUpperAscii(httpMethod) == "POST":
-    self.client.request(endpoint, httpMethod = HttpPOST).body
-  else:
-    self.client.request(endpoint).body
+proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
+  self.client.request(endpoint, httpMethod = httpMethod).body
 
 
-when isMainModule:
-  let client = newHttpClient()
-  let binance = newBinance("", "")
-  client.headers.add "X-MBX-APIKEY", binance.apiKey
+runnableExamples"-d:ssl -d:nimDisableCertificateValidation":
+  let client: Binance = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
   let preparedEndpoint = binance.ping()
   echo client.getContent(preparedEndpoint)
-
-
-
-
-#[
-
-
-API de Binance observaciones:
-
-- Toda la API esta documentada aca https://binance.github.io/binance-api-swagger
-- La API es todo JSON.
-- BODY siempre va vacio.
-- HEADER siempre requiere `X-MBX-APIKEY` con el API KEY, SIN el Secret.
-- URL todo va encodeado como URL query params.
-- URL requiere `signature` con el SHA256 de todo el query_string y la API SECRET.
-- El `signature` va en el query_string al final.
-- El `timestamp` es el tiempo en UTC en milisegundos.
-- Usar la "Testnet" para pruebas y desarrollo.
-- Si algo no se entiende ver como lo hacen en https://github.com/sammchardy/python-binance
-
-
-TODO:
-
-Hacer funciones que devuelvan la URL "preparada" para hacer una peticion,
-asi funciona para cualquier backend, el usuario puede usar fetch de JS, o HttpClient de stdlib, o Harpoon, o Curl,
-el usuario debera proveer la URL preparada, body vacio, http method GET o POST, header con `X-MBX-APIKEY`,
-tambien es menos trabajo implementar el cliente si solamente retorna URLs.
-
-La API de Binance es gigante, implementar primero los endpoints de "TRADE" ?
-https://binance.github.io/binance-api-swagger/#/Trade
-
-]#
