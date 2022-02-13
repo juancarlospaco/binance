@@ -22,6 +22,12 @@
 ![](https://starchart.cc/juancarlospaco/binance.svg)
 
 
+# TestNet Vs Prod
+
+- TestNet (Fake Binance, for testing) ` -d:binanceAPIUrl="https://testnet.binance.vision" `.
+- Production (Real Binance, for prod) ` -d:binanceAPIUrl="https://api.binance.com" `.
+
+
 # More
 
 - See also https://github.com/juancarlospaco/tradingview#tradingview
