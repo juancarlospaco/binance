@@ -154,15 +154,16 @@ proc signQueryString(apiSecret, queryString, endpoint: string): string =
 
 #GET /api/v3/ping
 #Test connectivity to the Rest API.
-func ping*(_: Binance): string =
+proc ping*(self: Binance): string =
   ## Test connectivity to Binance, just a ping.
-  result = static(binanceAPIUrl & "/api/v3/ping")
+  result = binanceAPIUrl & "/api/v3/ping"
+
 
 #GET /api/v3/time
 #Test connectivity to the Rest API and get the current server time.
-proc time*(_: Binance): string =
+proc time*(self: Binance): string =
   ## Get current Binance API server time.
-  result = static(binanceAPIUrl & "/api/v3/time")
+  result = binanceAPIUrl & "/api/v3/time"
 
 
 # Account Trade
