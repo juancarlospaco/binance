@@ -118,6 +118,7 @@ const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https:
 
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
+  assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
   var client = newHttpClient()
   client.headers.add "X-MBX-APIKEY", apiKey
   Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
