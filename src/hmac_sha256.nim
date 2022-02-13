@@ -366,6 +366,3 @@ proc hmac*[A: bchar, B: bchar](HashType: typedesc, key: openarray[A],data: opena
   discard bytesToHex(result_data, res, {})
   ctx.clear
   res.toLowerAscii
-
-#sha256.hmac("YhHTtOuNxFQIQRKvlaVZebeN5pEKJU0voPwgDqbDHwHXndbgB0HT1AS8H7pjRI5K", 
-#"symbol=BTCUSDT&side=BUY&type=LIMIT&timeInForce=GTC&quantity=0.1&price=10000.0&newClientOrderId=-1&newOrderRespType=FULL&recvWindow=10000&timestamp=1644710256000")
