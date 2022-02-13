@@ -1,5 +1,5 @@
 import std/[uri, times, httpclient, httpcore]
-include "binance_sha256.nim"
+import binance_sha256
 
 
 type
