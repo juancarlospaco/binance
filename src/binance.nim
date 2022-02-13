@@ -258,6 +258,7 @@ proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet)
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation":
+  from std/os import getEnv
   let client: Binance = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
-  let preparedEndpoint = binance.ping()
+  let preparedEndpoint: string = binance.ping()
   echo client.getContent(preparedEndpoint)
