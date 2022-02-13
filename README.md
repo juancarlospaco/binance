@@ -17,6 +17,16 @@
 - Device Date and Time must be configured, up to the seconds precision, Binance is strict about Timestamps.
 
 
+# Examples
+
+```
+import binance
+let client = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
+let preparedEndpoint = client.orderTest(SIDE_BUY, ORDER_TYPE_LIMIT, ORDER_RESP_TYPE_FULL, $TIME_IN_FORCE_GTC, "1", "BTCUSDT", 0.1, 10_000.00)
+echo client.request(preparedEndpoint, HttpPost)
+```
+
+
 # Stars
 
 ![](https://starchart.cc/juancarlospaco/binance.svg)
