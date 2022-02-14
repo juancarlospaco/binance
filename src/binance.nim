@@ -96,23 +96,42 @@ type
     AGG_QUANTITY       = 'q'
 
   AssetTransfer* = enum    ## New asset transfer API Enum.
-    SPOT_TO_FIAT = "MAIN_C2C"
-    SPOT_TO_USDT_FUTURE = "MAIN_UMFUTURE"
-    SPOT_TO_COIN_FUTURE = "MAIN_CMFUTURE"
-    SPOT_TO_MARGIN_CROSS = "MAIN_MARGIN"
-    SPOT_TO_MINING = "MAIN_MINING"
-    FIAT_TO_SPOT = "C2C_MAIN"
-    FIAT_TO_USDT_FUTURE = "C2C_UMFUTURE"
-    FIAT_TO_MINING = "C2C_MINING"
-    USDT_FUTURE_TO_SPOT = "UMFUTURE_MAIN"
-    USDT_FUTURE_TO_FIAT = "UMFUTURE_C2C"
+    SPOT_TO_FIAT                = "MAIN_C2C"
+    SPOT_TO_USDT_FUTURE         = "MAIN_UMFUTURE"
+    SPOT_TO_COIN_FUTURE         = "MAIN_CMFUTURE"
+    SPOT_TO_MARGIN_CROSS        = "MAIN_MARGIN"
+    SPOT_TO_MINING              = "MAIN_MINING"
+    FIAT_TO_SPOT                = "C2C_MAIN"
+    FIAT_TO_USDT_FUTURE         = "C2C_UMFUTURE"
+    FIAT_TO_MINING              = "C2C_MINING"
+    USDT_FUTURE_TO_SPOT         = "UMFUTURE_MAIN"
+    USDT_FUTURE_TO_FIAT         = "UMFUTURE_C2C"
     USDT_FUTURE_TO_MARGIN_CROSS = "UMFUTURE_MARGIN"
-    COIN_FUTURE_TO_SPOT = "CMFUTURE_MAIN"
-    MARGIN_CROSS_TO_SPOT = "MARGIN_MAIN"
+    COIN_FUTURE_TO_SPOT         = "CMFUTURE_MAIN"
+    MARGIN_CROSS_TO_SPOT        = "MARGIN_MAIN"
     MARGIN_CROSS_TO_USDT_FUTURE = "MARGIN_UMFUTURE"
-    MINING_TO_SPOT = "MINING_MAIN"
-    MINING_TO_USDT_FUTURE = "MINING_UMFUTURE"
-    MINING_TO_FIAT = "MINING_C2C"
+    MINING_TO_SPOT              = "MINING_MAIN"
+    MINING_TO_USDT_FUTURE       = "MINING_UMFUTURE"
+    MINING_TO_FIAT              = "MINING_C2C"
+
+  RateLimitTypes* = enum
+    RLRequests = "REQUESTS"
+    RLOrders   = "ORDERS"
+
+  RateLimitIntervals* = enum
+    RLISecond = "SECOND"
+    RLIMinute = "MINUTE"
+    RLIDay    = "DAY"
+
+  SymbolStatus* {.pure.} = enum
+    PreTrading   = "PRE_TRADING"
+    Trading      = "TRADING"
+    PostTrading  = "POST_TRADING"
+    EndOfDay     = "END_OF_DAY"
+    Halt         = "HALT"
+    AuctionMatch = "AUCTION_MATCH"
+    Break        = "BREAK"
+
 
 const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https://api.binance.com"   `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
 
