@@ -150,20 +150,153 @@ proc signQueryString(apiSecret, queryString, endpoint: string): string =
   result.add signature
 
 
-# Market Data
+# Generic endpoints.
 
-#GET /api/v3/ping
-#Test connectivity to the Rest API.
+
 proc ping*(self: Binance): string =
   ## Test connectivity to Binance, just a ping.
   result = binanceAPIUrl & "/api/v3/ping"
 
 
-#GET /api/v3/time
-#Test connectivity to the Rest API and get the current server time.
 proc time*(self: Binance): string =
   ## Get current Binance API server time.
   result = binanceAPIUrl & "/api/v3/time"
+
+
+proc exchangeInfo*(self: Binance): string =
+  ## Exchange information, info about Binance.
+  result = binanceAPIUrl & "/api/v3/exchangeInfo"
+
+
+# Market Data Endpoints
+
+
+proc orderBook*(self: Binance; symbol: string; limit: 5..1000 = 100): string =
+  ## Order book depth.
+  doAssert limit in {5, 10, 20, 50, 100, 500, 1_000}, "limit value must be an integer in the set of {5, 10, 20, 50, 100, 500, 1000}"
+  result = static(binanceAPIUrl & "/api/v3/depth?symbol=")
+  result.add symbol
+  result.add "&limit="
+  result.addInt limit
+
+
+proc recentTrades*(self: Binance; symbol: string; limit: 1..500 = 500): string =
+  ## Get a list of recent Trades.
+  result = static(binanceAPIUrl & "/api/v3/trades?symbol=")
+  result.add symbol
+  result.add "&limit="
+  result.addInt limit
+
+
+proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500; fromId: int): string =
+  ## Old historical Trades.
+  assert fromId > 0, "fromId must be greater than 0."
+  result = static(binanceAPIUrl & "/api/v3/historicalTrades?symbol=")
+  result.add symbol
+  result.add "&limit="
+  result.addInt limit
+  result.add "&fromId="
+  result.addInt fromId
+
+
+proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500): string =
+  ## Old historical Trades.
+  result = static(binanceAPIUrl & "/api/v3/historicalTrades?symbol=")
+  result.add symbol
+  result.add "&limit="
+  result.addInt limit
+
+
+proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: int; limit: 1..500 = 500): string =
+  ## Aggregated Trades list.
+  assert fromId > 0, "fromId must be an integer greater than 0."
+  assert startTime > 0, "startTime must be an integer greater than 0."
+  assert endTime > 0, "endTime must be an integer greater than 0."
+  assert endTime - startTime < 24 * 36000000, "startTime/endTime must be 2 integers representing a time interval smaller than 24 hours."
+  result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
+  result.add symbol
+  result.add "&fromId="
+  result.addInt fromId
+  result.add "&startTime="
+  result.addInt startTime
+  result.add "&endTime="
+  result.addInt endTime
+  result.add "&limit="
+  result.addInt limit
+
+
+proc aggrTrades*(self: Binance; symbol: string; fromId: int; limit: 1..500 = 500): string =
+  ## Aggregated Trades list.
+  assert fromId > 0, "fromId must be an integer greater than 0."
+  result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
+  result.add symbol
+  result.add "&fromId="
+  result.addInt fromId
+  result.add "&limit="
+  result.addInt limit
+
+
+proc aggrTrades*(self: Binance; symbol: string): string =
+  ## Aggregated Trades list.
+  result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
+  result.add symbol
+
+
+proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: int; limit: 1..500 = 500): string =
+  ## Klines data, AKA Candlestick data.
+  result = static(binanceAPIUrl & "/api/v3/klines?symbol=")
+  result.add symbol
+  result.add "&startTime="
+  result.addInt startTime
+  result.add "&endTime="
+  result.addInt endTime
+  result.add "&interval="
+  result.add $interval
+  result.add "&limit="
+  result.addInt limit
+
+
+proc klines*(self: Binance; symbol: string; interval: Interval; limit: 1..500 = 500): string =
+  ## Klines data, AKA Candlestick data.
+  result = static(binanceAPIUrl & "/api/v3/klines?symbol=")
+  result.add symbol
+  result.add "&interval="
+  result.add $interval
+  result.add "&limit="
+  result.addInt limit
+
+
+proc ticker24h*(self: Binance; symbol: string): string =
+  ## Price changes in the last 24 hours.
+  result = static(binanceAPIUrl & "/api/v3/ticker/24hr?symbol=")
+  result.add symbol
+
+
+proc ticker24h*(self: Binance): string =
+  ## Price changes in the last 24 hours.
+  result = static(binanceAPIUrl & "/api/v3/ticker/24hr")
+
+
+proc tickerPrice*(self: Binance; symbol: string): string =
+  ## Symbol price.
+  result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=")
+  result.add symbol
+
+
+proc tickerPrice*(self: Binance): string =
+  ## Symbol price.
+  result = static(binanceAPIUrl & "/api/v3/ticker/price")
+
+
+proc orderBookTicker*(self: Binance; symbol: string): string =
+  ## Symbol order book.
+  result = static(binanceAPIUrl & "/api/v3/ticker/bookTicker?symbol=")
+  result.add symbol
+
+
+proc orderBookTicker*(self: Binance): string =
+  ## Symbol order book.
+  result = static(binanceAPIUrl & "/api/v3/ticker/bookTicker")
 
 
 # Account Trade
