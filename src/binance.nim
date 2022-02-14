@@ -1,4 +1,4 @@
-import std/[uri, times, httpclient, httpcore]
+import std/[times, httpclient, httpcore]
 import binance/binance_sha256
 
 
@@ -117,9 +117,6 @@ type
 const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https://api.binance.com"   `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
 
 
-template genTimestamp(): string = $(now().utc.toTime.toUnix * 1_000)
-
-
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
@@ -130,24 +127,16 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 
 
-proc signQueryString(apiSecret, queryString, endpoint: string): string =
-  let signature: string = sha256.hmac(apiSecret, queryString)
-  result = static(binanceAPIUrl & "/api/v3/")
-  result.add endpoint
-  result.add '?'
-  result.add queryString
-  result.add '&'
-  result.add 's'
-  result.add 'i'
-  result.add 'g'
-  result.add 'n'
-  result.add 'a'
-  result.add 't'
-  result.add 'u'
-  result.add 'r'
-  result.add 'e'
-  result.add '='
+template signQueryString(self: Binance; endpoint: static[string]) =
+  ## Sign the query string for Binance API, reusing the same string.
+  result.add "&recvWindow="
+  result.addInt self.recvWindow
+  result.add "&timestamp="
+  result.addInt int(now().utc.toTime.toUnix * 1_000)  # UTC Timestamp.
+  let signature: string = sha256.hmac(self.apiSecret, result)
+  result.add "&signature="
   result.add signature
+  result = static(binanceAPIUrl & "/api/v3/" & endpoint & '?') & result
 
 
 # Generic endpoints.
@@ -188,9 +177,8 @@ proc recentTrades*(self: Binance; symbol: string; limit: 1..500 = 500): string =
   result.addInt limit
 
 
-proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500; fromId: int): string =
+proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500; fromId: Positive): string =
   ## Old historical Trades.
-  assert fromId > 0, "fromId must be greater than 0."
   result = static(binanceAPIUrl & "/api/v3/historicalTrades?symbol=")
   result.add symbol
   result.add "&limit="
@@ -207,11 +195,8 @@ proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500): string =
   result.addInt limit
 
 
-proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: int; limit: 1..500 = 500): string =
+proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: Positive; limit: 1..500 = 500): string =
   ## Aggregated Trades list.
-  assert fromId > 0, "fromId must be an integer greater than 0."
-  assert startTime > 0, "startTime must be an integer greater than 0."
-  assert endTime > 0, "endTime must be an integer greater than 0."
   assert endTime - startTime < 24 * 36000000, "startTime/endTime must be 2 integers representing a time interval smaller than 24 hours."
   result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
   result.add symbol
@@ -225,9 +210,8 @@ proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: int;
   result.addInt limit
 
 
-proc aggrTrades*(self: Binance; symbol: string; fromId: int; limit: 1..500 = 500): string =
+proc aggrTrades*(self: Binance; symbol: string; fromId: Positive; limit: 1..500 = 500): string =
   ## Aggregated Trades list.
-  assert fromId > 0, "fromId must be an integer greater than 0."
   result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
   result.add symbol
   result.add "&fromId="
@@ -242,7 +226,7 @@ proc aggrTrades*(self: Binance; symbol: string): string =
   result.add symbol
 
 
-proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: int; limit: 1..500 = 500): string =
+proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: Positive; limit: 1..500 = 500): string =
   ## Klines data, AKA Candlestick data.
   result = static(binanceAPIUrl & "/api/v3/klines?symbol=")
   result.add symbol
@@ -303,21 +287,32 @@ proc orderBookTicker*(self: Binance): string =
 
 #GET /api/v3/order
 #Check an order's status
-proc getOrder*(self: Binance, symbol:string, orderId:uint = 1, origClientOrderId: uint = 1): string =
-  var queryString: string = encodeQuery({
-    "symbol": symbol, "orderID": $orderId, "origClientOrderId": $origClientOrderId, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "order")
+proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOrderId = 1.Positive): string =
+  result = "symbol="
+  result.add symbol
+  result.add "&orderId="
+  result.addInt orderId
+  result.add "&origClientOrderId="
+  result.addInt origClientOrderId
+  self.signQueryString"order"
 
 
 #POST /api/v3/order
 #Send in a new order.
-proc postOrder*(self: Binance, side:Side, tipe: OrderType, timeInForce,symbol:string, quantity, price:float): string =
-  var queryString: string = encodeQuery({
-    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce, "quantity": $quantity,
-    "price": $price, "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "order")
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
+  result = "symbol="
+  result.add symbol
+  result.add "&side="
+  result.add $side
+  result.add "&type="
+  result.add $tipe
+  result.add "&timeInForce="
+  result.add timeInForce
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&price="
+  result.add $price
+  self.signQueryString"order"
 
 
 #POST /api/v3/order/test
@@ -325,74 +320,80 @@ proc postOrder*(self: Binance, side:Side, tipe: OrderType, timeInForce,symbol:st
 #Creates and validates a new order but does not send it into the matching engine
 proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
     timeInForce, newClientOrderId, symbol: string; quantity, price: float): string =
-
-  var queryString: string = encodeQuery({
-    "symbol": symbol, "side": $side, "type": $tipe, "timeInForce": timeInForce,
-    "quantity": $quantity, "price": $price, "newClientOrderId": newClientOrderId,
-    "newOrderRespType": $newOrderRespType, "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "order/test")
+  result = "symbol="
+  result.add symbol
+  result.add "&side="
+  result.add $side
+  result.add "&type="
+  result.add $tipe
+  result.add "&timeInForce="
+  result.add timeInForce
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&price="
+  result.add $price
+  result.add "&newClientOrderId="
+  result.add newClientOrderId
+  result.add "&newOrderRespType="
+  result.add $newOrderRespType
+  self.signQueryString"order/test"
 
 
 #GET /api/v3/account
 #Get the current account information
 proc accountData*(self: Binance): string =
-  var queryString: string = encodeQuery({
-    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "account")
+  self.signQueryString"account"
 
 
 #GET /api/v3/myTrades
 #Get trades for a specific account and symbol.
-proc myTrades*(self: Binance, symbol:string):string =
-  var queryString: string = encodeQuery({
-    "symbol": symbol, "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "myTrades")
+proc myTrades*(self: Binance; symbol: string): string =
+  result = "symbol="
+  result.add symbol
+  self.signQueryString"myTrades"
 
 
 #GET /api/v3/rateLimit/order
 #Displays the user's current order count usage for all intervals.
 proc rateLimitOrder*(self: Binance): string =
-  var queryString: string = encodeQuery({
-    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "rateLimit/order")
+  self.signQueryString"rateLimit/order"
 
 
 #GET /api/v3/orderList
 #Retrieves all OCO based on provided optional parameters
-proc orderList*(self: Binance, orderListId:uint = 1):string =
-  var queryString: string = encodeQuery({
-    "orderListId": $orderListId, "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "orderList")
+proc orderList*(self: Binance; orderListId = 1.Positive): string =
+  result = "orderListId="
+  result.addInt orderListId
+  self.signQueryString"orderList"
 
 
 #GET /api/v3/allOrderList
 #Retrieves all OCO based on provided optional parameters
-proc allOrderList*(self: Binance):string =
-  var queryString: string = encodeQuery({
-    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "allOrderList")
+proc allOrderList*(self: Binance): string =
+  self.signQueryString"allOrderList"
 
 
 #GET /api/v3/openOrderList
-proc openOrderList*(self: Binance):string =
-  var queryString: string = encodeQuery({
-    "recvWindow": $self.recvWindow, "timestamp": genTimestamp()
-  })
-  signQueryString(self.apiSecret, queryString, "openOrderList")
+proc openOrderList*(self: Binance): string =
+  self.signQueryString"openOrderList"
 
 
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
   self.client.request(endpoint, httpMethod = httpMethod).body
 
 
+# User data streams
+
+
+proc userDataStream*(self: Binance): string =
+  ## Start a new user data stream.
+  ## * `POST` to Open a new user data stream.
+  ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
+  ## * `GET` to Keep Alive an existing user data stream.
+  result = binanceAPIUrl & "/api/v3/userDataStream"
+
+
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
-  from std/os import getEnv
-  let client: Binance = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
+  let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
   let preparedEndpoint: string = client.ping()
   echo client.getContent(preparedEndpoint)
