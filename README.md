@@ -27,6 +27,11 @@ echo client.request(preparedEndpoint, HttpPost)
 ```
 
 
+# Documentation
+
+- https://juancarlospaco.github.io/binance
+
+
 # Stars
 
 ![](https://starchart.cc/juancarlospaco/binance.svg)
