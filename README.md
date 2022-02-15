@@ -32,11 +32,6 @@ echo client.request(preparedEndpoint, HttpPost)
 - https://juancarlospaco.github.io/binance
 
 
-# Stars
-
-![](https://starchart.cc/juancarlospaco/binance.svg)
-
-
 # TestNet Vs Prod
 
 - TestNet (Fake Binance, for testing) ` -d:binanceAPIUrl="https://testnet.binance.vision" `.
@@ -46,3 +41,8 @@ echo client.request(preparedEndpoint, HttpPost)
 # More
 
 - See also https://github.com/juancarlospaco/tradingview#tradingview
+
+
+# Stars
+
+![](https://starchart.cc/juancarlospaco/binance.svg)
