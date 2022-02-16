@@ -47,3 +47,4 @@ echo client.request(preparedEndpoint, HttpPost)
 
 ![](https://starchart.cc/juancarlospaco/binance.svg)
 :star: [@juancarlospaco](https://github.com/juancarlospaco '2022-02-15')	
+:star: [@kennym](https://github.com/kennym '2022-02-16')	
