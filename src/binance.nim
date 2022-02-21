@@ -396,6 +396,25 @@ proc allOrderList*(self: Binance): string =
 proc openOrderList*(self: Binance): string =
   self.signQueryString"openOrderList"
 
+#POST /api/v3/order/oco
+#Send in a new OCO buy order
+proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float, stopLimitTimeInForce: string):string =
+  result = "symbol="
+  result.add symbol  
+  result.add "&price="
+  result.add $price
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&stopPrice="
+  result.add $stopPrice
+  result.add "&stopLimitPrice="
+  result.add $stopLimitPrice
+  result.add "&stopLimitTimeInForce="
+  result.add stopLimitTimeInForce
+  result.add "&side="
+  result.add $side
+  self.signQueryString"order/oco"
+  
 
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
   self.client.request(endpoint, httpMethod = httpMethod).body
