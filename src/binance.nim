@@ -151,7 +151,7 @@ template signQueryString(self: Binance; endpoint: static[string]) =
   result.add "&recvWindow="
   result.addInt self.recvWindow
   result.add "&timestamp="
-  result.addInt int(now().utc.toTime.toUnix * 1_000)  # UTC Timestamp.
+  result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
   let signature: string = sha256.hmac(self.apiSecret, result)
   result.add "&signature="
   result.add signature
