@@ -1,5 +1,6 @@
-import std/[times, httpclient, httpcore]
+import std/[times, httpclient, httpcore, json, strutils]
 import binance/binance_sha256
+from os import sleep
 
 
 type
@@ -151,7 +152,7 @@ template signQueryString(self: Binance; endpoint: static[string]) =
   result.add "&recvWindow="
   result.addInt self.recvWindow
   result.add "&timestamp="
-  result.addInt int(now().utc.toTime.toUnix * 1_000)  # UTC Timestamp.
+  result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
   let signature: string = sha256.hmac(self.apiSecret, result)
   result.add "&signature="
   result.add signature
@@ -245,7 +246,7 @@ proc aggrTrades*(self: Binance; symbol: string): string =
   result.add symbol
 
 
-proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: Positive; limit: 1..500 = 500): string =
+proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: int64; limit: 1..500 = 500): string =
   ## Klines data, AKA Candlestick data.
   result = static(binanceAPIUrl & "/api/v3/klines?symbol=")
   result.add symbol
@@ -268,6 +269,51 @@ proc klines*(self: Binance; symbol: string; interval: Interval; limit: 1..500 = 
   result.add "&limit="
   result.addInt limit
 
+
+converter interval_to_milliseconds(interval: Interval):int =
+  # numeric part of Interval
+  ($interval)[0..^2].parseInt * ( case ($interval)[^1]:
+    of 'm': 60
+    of 'h': 60 * 60
+    of 'd': 24 * 60 * 60
+    of 'w': 7  * 24 * 60 * 60
+    else: 1) * 1_000
+  
+
+converter date_to_milliseconds(d: Duration): int64 =
+  var epoch = initDuration(seconds = now().utc.toTime.toUnix)
+  epoch -= d
+  epoch.inMilliseconds
+  
+
+proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, start_str:Duration, end_str:Duration = initDuration(seconds = 0), kline_type: HistoricalKlinesType = SPOT, limit:int = 500): JsonNode =
+  var
+    output_data = newJArray()
+    timeframe:int = interval  #invoke interval_to_milliseconds
+    start_ts:int64 = start_str
+    end_ts:int64   = end_str
+    idx = 0
+    url:string
+    temp_data:JsonNode
+
+  while true:
+    url  =  self.klines(symbol = symbol, interval = interval, limit = limit, startTime = start_str, endTime = end_str)     
+    temp_data =  parseJson(self.getContent(url))  
+    output_data.add temp_data
+
+    # set our start timestamp using the last value in the array
+    start_ts = temp_data[^1][0].getBiggestInt
+    inc(idx) 
+
+    if len(temp_data) < limit:
+      break
+
+    start_ts += timeframe  
+    
+    if idx %% 3 == 0:
+      sleep(1_000)
+
+  output_data    
 
 proc ticker24h*(self: Binance; symbol: string): string =
   ## Price changes in the last 24 hours.
@@ -396,6 +442,25 @@ proc allOrderList*(self: Binance): string =
 proc openOrderList*(self: Binance): string =
   self.signQueryString"openOrderList"
 
+#POST /api/v3/order/oco
+#Send in a new OCO buy order
+proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float, stopLimitTimeInForce: string):string =
+  result = "symbol="
+  result.add symbol  
+  result.add "&price="
+  result.add $price
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&stopPrice="
+  result.add $stopPrice
+  result.add "&stopLimitPrice="
+  result.add $stopLimitPrice
+  result.add "&stopLimitTimeInForce="
+  result.add stopLimitTimeInForce
+  result.add "&side="
+  result.add $side
+  self.signQueryString"order/oco"
+  
 
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
   self.client.request(endpoint, httpMethod = httpMethod).body

@@ -8,9 +8,8 @@ jobs:
       fail-fast: false
       matrix:
         platform:       [ubuntu-latest, windows-latest]
-        architecture:   [x64, x86]
         nim-channel:    [stable, devel]
-    name: ${{ matrix.platform }}-${{ matrix.architecture }}-${{ matrix.nim-channel }}
+    name: ${{ matrix.platform }}-${{ matrix.nim-channel }}
     runs-on: ${{ matrix.platform }}
     steps:
     - uses: actions/checkout@v2
