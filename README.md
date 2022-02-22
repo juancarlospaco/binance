@@ -48,8 +48,7 @@ echo client.request(preparedEndpoint, HttpPost)
 # Stars
 
 ![](https://starchart.cc/juancarlospaco/binance.svg)
-:star: [@juancarlospaco](https://github.com/juancarlospaco '2022-02-15')	
-:star: [@kennym](https://github.com/kennym '2022-02-16')	
-:star: [@nickolaz](https://github.com/nickolaz '2022-02-18')	
-:star: [@Nacho512](https://github.com/Nacho512 '2022-02-20')	
-:star: [@Nacho512](https://github.com/Nacho512 '2022-02-20')	
+:star: [@juancarlospaco](https://github.com/juancarlospaco '2022-02-15')
+:star: [@kennym](https://github.com/kennym '2022-02-16')
+:star: [@nickolaz](https://github.com/nickolaz '2022-02-18')
+:star: [@Nacho512](https://github.com/Nacho512 '2022-02-20')
