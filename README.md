@@ -39,6 +39,8 @@ echo client.request(preparedEndpoint, HttpPost)
 
 # TestNet Vs Prod
 
+**BY DEFAULT IS USING PRODUCTION API!.**
+
 - TestNet (Fake Binance, for testing) ` -d:binanceAPIUrl="https://testnet.binance.vision" `.
 - Production (Real Binance, for prod) ` -d:binanceAPIUrl="https://api.binance.com" `.
 
