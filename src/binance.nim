@@ -134,7 +134,7 @@ type
     Break        = "BREAK"
 
 
-const binanceAPIUrl* {.strdefine.} = "https://testnet.binance.vision"  # "https://api.binance.com"   `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
+const binanceAPIUrl* {.strdefine.} = "https://api.binance.com"  ## `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
 
 
 proc newBinance*(apiKey, apiSecret: string): Binance =
