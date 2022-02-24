@@ -460,6 +460,13 @@ proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, st
   result.add "&side="
   result.add $side
   self.signQueryString"order/oco"
+
+#GET /api/v3/openOrders
+#Get all open orders on a symbol.
+proc openOrders*(self: Binance, symbol: string): string =
+  result = "symbol="
+  result.add symbol
+  self.signQueryString"openOrders"
   
 
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
