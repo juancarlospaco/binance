@@ -416,6 +416,20 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol:
   self.signQueryString"order"
 
 
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity, price: float): string =
+  result = "symbol="
+  result.add symbol
+  result.add "&side="
+  result.add $side
+  result.add "&type="
+  result.add $tipe
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&price="
+  result.add $price
+  self.signQueryString"order"
+
+
 #POST /api/v3/order/test
 #Test new order creation and signature/recvWindow long.
 #Creates and validates a new order but does not send it into the matching engine
