@@ -1,6 +1,4 @@
-import std/[times, httpclient, httpcore, json, strutils]
-import binance/binance_sha256
-from os import sleep
+import std/[times, httpclient, httpcore, json, strutils, math, strformat, os], binance/binance_sha256
 
 
 type
@@ -137,14 +135,68 @@ type
 const binanceAPIUrl* {.strdefine.} = "https://api.binance.com"  ## `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
 
 
+template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static[float] = NaN) =
+  ## Utility template to check if a float is valid, because float sux.
+  assert not floaty.isNaN, "Value must not be  NaN"
+  assert floaty != +Inf,   "Value must not be +Inf"
+  assert floaty != -Inf,   "Value must not be -Inf"
+  when not lowest.isNaN:  assert floaty >= lowest,  "Value must be >= " & $lowest
+  when not highest.isNaN: assert floaty <= highest, "Value must be <= " & $highest
+
+
+func truncate*(self: Binance; number: float, digits: uint): float =
+  ## Utility function to truncate a float to a certain number of digits.
+  checkFloat(number)
+  doAssert digits > 1, "digits must not be Zero"
+  var
+    resp = ""
+    startCounting = false
+    countDigit: uint = 0
+  if number < 1.0:
+    var numberStr = fmt"{number:>.20f}"
+    for i in 0 ..< numberStr.len:
+      if numberStr[0] != '0' and numberStr[i] != ',' and numberStr[i] != '.':
+        startCounting = true
+      if startCounting:
+        inc countDigit
+      resp.add numberStr[i]
+
+      if countDigit == digits:
+        break
+    result = parseFloat(resp[0..2])
+  else:
+    result = round(number)
+
+
+converter interval_to_milliseconds(interval: Interval): int =
+  ## Get numeric part of Interval.
+  ($interval)[0..^2].parseInt * (
+    case ($interval)[^1]:
+    of 'm': 60
+    of 'h': 60 * 60
+    of 'd': 24 * 60 * 60
+    of 'w': 7  * 24 * 60 * 60
+    else: 1
+  ) * 1_000
+
+
+converter date_to_milliseconds(d: Duration): int64 =
+  ## Date to milliseconds.
+  var epoch = initDuration(seconds = now().utc.toTime.toUnix)
+  epoch -= d
+  epoch.inMilliseconds
+
+
+template getContent*(self: Binance, url: string): string = self.client.getContent(url)
+template close*(self: Binance) = self.client.close()
+
+
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
   var client = newHttpClient()
   client.headers.add "X-MBX-APIKEY", apiKey
   Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
-
-template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 
 
 template signQueryString(self: Binance; endpoint: static[string]) =
@@ -270,50 +322,34 @@ proc klines*(self: Binance; symbol: string; interval: Interval; limit: 1..500 = 
   result.addInt limit
 
 
-converter interval_to_milliseconds(interval: Interval):int =
-  # numeric part of Interval
-  ($interval)[0..^2].parseInt * ( case ($interval)[^1]:
-    of 'm': 60
-    of 'h': 60 * 60
-    of 'd': 24 * 60 * 60
-    of 'w': 7  * 24 * 60 * 60
-    else: 1) * 1_000
-  
-
-converter date_to_milliseconds(d: Duration): int64 =
-  var epoch = initDuration(seconds = now().utc.toTime.toUnix)
-  epoch -= d
-  epoch.inMilliseconds
-  
-
-proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, start_str:Duration, end_str:Duration = initDuration(seconds = 0), kline_type: HistoricalKlinesType = SPOT, limit:int = 500): JsonNode =
+proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, start_str: Duration, end_str: Duration = initDuration(seconds = 0), kline_type: HistoricalKlinesType = SPOT, limit: int = 500): JsonNode =
   var
     output_data = newJArray()
-    timeframe:int = interval  #invoke interval_to_milliseconds
-    start_ts:int64 = start_str
-    end_ts:int64   = end_str
+    timeframe: int = interval  #invoke interval_to_milliseconds
+    start_ts: int64 = start_str
     idx = 0
-    url:string
-    temp_data:JsonNode
+    url: string
+    temp_data: JsonNode
 
   while true:
-    url  =  self.klines(symbol = symbol, interval = interval, limit = limit, startTime = start_str, endTime = end_str)     
-    temp_data =  parseJson(self.getContent(url))  
+    url = self.klines(symbol = symbol, interval = interval, limit = limit, startTime = start_str, endTime = end_str)
+    temp_data = parseJson(self.getContent(url))
     output_data.add temp_data
 
     # set our start timestamp using the last value in the array
     start_ts = temp_data[^1][0].getBiggestInt
-    inc(idx) 
+    inc idx
 
-    if len(temp_data) < limit:
+    if temp_data.len < limit:
       break
 
-    start_ts += timeframe  
-    
-    if idx %% 3 == 0:
-      sleep(1_000)
+    start_ts += timeframe
 
-  output_data    
+    if idx %% 3 == 0:
+      sleep 1_000
+
+  output_data
+
 
 proc ticker24h*(self: Binance; symbol: string): string =
   ## Price changes in the last 24 hours.
@@ -446,7 +482,7 @@ proc openOrderList*(self: Binance): string =
 #Send in a new OCO buy order
 proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float, stopLimitTimeInForce: string):string =
   result = "symbol="
-  result.add symbol  
+  result.add symbol
   result.add "&price="
   result.add $price
   result.add "&quantity="
@@ -467,7 +503,7 @@ proc openOrders*(self: Binance, symbol: string): string =
   result = "symbol="
   result.add symbol
   self.signQueryString"openOrders"
-  
+
 
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
   self.client.request(endpoint, httpMethod = httpMethod).body
