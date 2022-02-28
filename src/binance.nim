@@ -242,10 +242,18 @@ proc time*(self: Binance): string =
   result = binanceAPIUrl & "/api/v3/time"
 
 
-proc exchangeInfo*(self: Binance): string =
+proc exchangeInfo*(self: Binance, symbols:seq[string] = @[]): string =
   ## Exchange information, info about Binance.
   result = binanceAPIUrl & "/api/v3/exchangeInfo"
-
+  if len(symbols) != 0:
+    if len(symbols) == 1:
+      result.add "?symbol="
+      result.add symbols[0]
+    else:
+      result.add "?symbols="
+      result.add "%5B%22"
+      result.add symbols.join(",").replace(",","%22%2C%22")
+      result.add "%22%5D"
 
 # Market Data Endpoints
 
