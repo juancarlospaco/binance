@@ -232,7 +232,9 @@ proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool =
         result.add symbols.join(",").replace(",","%22%2C%22")
         result.add "%22%5D"
   else:
+    result = self.exchangeData.parseJson.pretty
     if len(symbols) != 0:
+      result = ""
       var temp_result = (self.exchangeData.parseJson)["symbols"]
       var fetched:seq[string]
       for symbol in symbols:
@@ -240,9 +242,6 @@ proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool =
           if k["symbol"].getStr notin fetched and k["symbol"].getStr == symbol:
             fetched.add symbol
             result.add k.pretty
-    else:
-      result = self.exchangeData.parseJson.pretty
-      
 
     
 proc newBinance*(apiKey, apiSecret: string): Binance =
