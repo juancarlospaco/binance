@@ -1,4 +1,4 @@
-import std/[times, httpclient, httpcore, json, strutils, math, strformat, os], binance/binance_sha256
+import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os], binance/binance_sha256
 
 
 type
@@ -6,6 +6,18 @@ type
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
     recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
     client: HttpClient
+    balances: Table[string, tuple[free: float, locked: float]]
+    exchangeData: string
+
+  FilterRule = enum
+    PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
+    PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
+    LOT_SIZE            = "LOT_SIZE"            ## Defines the quantity (aka "lots" in auction terms) rules for a symbol
+    MIN_NOTIONAL        = "MIN_NOTIONAL"        ##   
+    ICEBERG_PARTS       = "ICEBERG_PARTS"       ##
+    MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ##
+    MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ##
+    MAX_NUM_ALGO_ORDERS = "MAX_NUM_ALGO_ORDERS" ##
 
   HistoricalKlinesType* = enum
     SPOT    = 1
@@ -190,15 +202,6 @@ converter date_to_milliseconds(d: Duration): int64 =
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 template close*(self: Binance) = self.client.close()
 
-
-proc newBinance*(apiKey, apiSecret: string): Binance =
-  ## Constructor for Binance client.
-  assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
-  var client = newHttpClient()
-  client.headers.add "X-MBX-APIKEY", apiKey
-  Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
-
-
 template signQueryString(self: Binance; endpoint: static[string]) =
   ## Sign the query string for Binance API, reusing the same string.
   result.add "&recvWindow="
@@ -211,8 +214,70 @@ template signQueryString(self: Binance; endpoint: static[string]) =
   result = static(binanceAPIUrl & "/api/v3/" & endpoint & '?') & result
 
 
-# Generic endpoints.
+#GET /api/v3/account
+#Get the current account information
+proc accountData*(self: Binance): string =
+  self.signQueryString"account"
 
+#Get user wallet assets
+proc updateUserWallet(self: var Binance) =
+  let wallet = parseJson(self.getContent(self.accountData))["balances"]
+  self.balances = initTable[string, tuple[free: float, locked: float]]()
+  for asset in wallet: 
+    # Hide 0 balances
+    if asset["free"].getStr.parseFloat != 0.0:
+      self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
+
+
+proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool = false): string =
+  ## Exchange information, info about Binance.
+  if not fromMemory:
+    result = binanceAPIUrl & "/api/v3/exchangeInfo"
+    if len(symbols) != 0:
+      # Get information about 1 or more symbols
+      if len(symbols) == 1:
+        result.add "?symbol="
+        result.add symbols[0]
+      else:
+        result.add "?symbols="
+        result.add "%5B%22"
+        result.add symbols.join(",").replace(",","%22%2C%22")
+        result.add "%22%5D"
+  else:
+    result = self.exchangeData.parseJson.pretty
+    if len(symbols) != 0:
+      result = ""
+      var temp_result = (self.exchangeData.parseJson)["symbols"]
+      var fetched:seq[string]
+      for symbol in symbols:
+        for k in temp_result:
+          if k["symbol"].getStr notin fetched and k["symbol"].getStr == symbol:
+            fetched.add symbol
+            result.add k.pretty
+
+    
+proc newBinance*(apiKey, apiSecret: string): Binance =
+  ## Constructor for Binance client.
+  assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
+  var client = newHttpClient()
+  client.headers.add "X-MBX-APIKEY", apiKey
+  result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
+  # user wallet is cached in memory at runtime
+  result.updateUserWallet
+  # retrives exchange info for trading uses
+  result.exchangeData = result.getContent(result.exchangeInfo())
+  
+
+## Retrives current or updated wallet info
+proc userWallet*(self: var Binance, update:bool = false): self.balances.type = 
+  if update: 
+    self.updateUserWallet
+  self.balances
+
+
+proc verifyFiltersRule(filter: FilterRule):int = 0
+
+# Generic endpoints.
 
 proc ping*(self: Binance): string =
   ## Test connectivity to Binance, just a ping.
@@ -222,11 +287,6 @@ proc ping*(self: Binance): string =
 proc time*(self: Binance): string =
   ## Get current Binance API server time.
   result = binanceAPIUrl & "/api/v3/time"
-
-
-proc exchangeInfo*(self: Binance): string =
-  ## Exchange information, info about Binance.
-  result = binanceAPIUrl & "/api/v3/exchangeInfo"
 
 
 # Market Data Endpoints
@@ -451,11 +511,6 @@ proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: Re
   result.add $newOrderRespType
   self.signQueryString"order/test"
 
-
-#GET /api/v3/account
-#Get the current account information
-proc accountData*(self: Binance): string =
-  self.signQueryString"account"
 
 
 #GET /api/v3/myTrades
