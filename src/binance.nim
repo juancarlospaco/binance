@@ -7,6 +7,7 @@ type
     recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
     client: HttpClient
     balances: Table[string, tuple[free: float, locked: float]]
+    exchangeData: string
 
   HistoricalKlinesType* = enum
     SPOT    = 1
@@ -214,6 +215,35 @@ proc updateUserWallet(self: var Binance) =
   self.balances = initTable[string, tuple[free: float, locked: float]]()
   for asset in wallet: 
     self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
+
+
+proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool = false): string =
+  ## Exchange information, info about Binance.
+  if not fromMemory:
+    result = binanceAPIUrl & "/api/v3/exchangeInfo"
+    if len(symbols) != 0:
+      # Get information about 1 or more symbols
+      if len(symbols) == 1:
+        result.add "?symbol="
+        result.add symbols[0]
+      else:
+        result.add "?symbols="
+        result.add "%5B%22"
+        result.add symbols.join(",").replace(",","%22%2C%22")
+        result.add "%22%5D"
+  else:
+    if len(symbols) != 0:
+      var temp_result = (self.exchangeData.parseJson)["symbols"]
+      var fetched:seq[string]
+      for symbol in symbols:
+        for k in temp_result:
+          if k["symbol"].getStr notin fetched and k["symbol"].getStr == symbol:
+            fetched.add symbol
+            result.add k.pretty
+    else:
+      result = self.exchangeData.parseJson.pretty
+      
+
     
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
@@ -221,8 +251,11 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   var client = newHttpClient()
   client.headers.add "X-MBX-APIKEY", apiKey
   result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
-  # user wallet is cached in memory at runtime 
+  # user wallet is cached in memory at runtime
   result.updateUserWallet
+  # retrives exchange info for trading uses
+  result.exchangeData = result.getContent(result.exchangeInfo())
+  
 
 ## Retrives current or updated wallet info
 proc userWallet*(self: var Binance, update:bool = false): self.balances.type = 
@@ -241,19 +274,6 @@ proc time*(self: Binance): string =
   ## Get current Binance API server time.
   result = binanceAPIUrl & "/api/v3/time"
 
-
-proc exchangeInfo*(self: Binance, symbols:seq[string] = @[]): string =
-  ## Exchange information, info about Binance.
-  result = binanceAPIUrl & "/api/v3/exchangeInfo"
-  if len(symbols) != 0:
-    if len(symbols) == 1:
-      result.add "?symbol="
-      result.add symbols[0]
-    else:
-      result.add "?symbols="
-      result.add "%5B%22"
-      result.add symbols.join(",").replace(",","%22%2C%22")
-      result.add "%22%5D"
 
 # Market Data Endpoints
 
