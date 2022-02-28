@@ -9,6 +9,16 @@ type
     balances: Table[string, tuple[free: float, locked: float]]
     exchangeData: string
 
+  FilterRule = enum
+    PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
+    PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
+    LOT_SIZE            = "LOT_SIZE"            ## Defines the quantity (aka "lots" in auction terms) rules for a symbol
+    MIN_NOTIONAL        = "MIN_NOTIONAL"        ##   
+    ICEBERG_PARTS       = "ICEBERG_PARTS"       ##
+    MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ##
+    MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ##
+    MAX_NUM_ALGO_ORDERS = "MAX_NUM_ALGO_ORDERS" ##
+
   HistoricalKlinesType* = enum
     SPOT    = 1
     FUTURES = 2
@@ -263,6 +273,9 @@ proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
   if update: 
     self.updateUserWallet
   self.balances
+
+
+proc verifyFiltersRule(filter: FilterRule):int = 0
 
 # Generic endpoints.
 
