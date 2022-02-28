@@ -214,7 +214,9 @@ proc updateUserWallet(self: var Binance) =
   let wallet = parseJson(self.getContent(self.accountData))["balances"]
   self.balances = initTable[string, tuple[free: float, locked: float]]()
   for asset in wallet: 
-    self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
+    # Hide 0 balances
+    if asset["free"].getStr.parseFloat != 0.0:
+      self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
 
 
 proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool = false): string =
