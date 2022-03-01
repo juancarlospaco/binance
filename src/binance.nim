@@ -13,11 +13,12 @@ type
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
     PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
     LOT_SIZE            = "LOT_SIZE"            ## Defines the quantity (aka "lots" in auction terms) rules for a symbol
-    MIN_NOTIONAL        = "MIN_NOTIONAL"        ##   
-    ICEBERG_PARTS       = "ICEBERG_PARTS"       ##
-    MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ##
-    MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ##
-    MAX_NUM_ALGO_ORDERS = "MAX_NUM_ALGO_ORDERS" ##
+    MIN_NOTIONAL        = "MIN_NOTIONAL"        ## Defines the minimum notional value allowed for an order on a symbol  
+#    ICEBERG_PARTS       = "ICEBERG_PARTS"       ## Defines the maximum parts an iceberg order can have
+    MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ## Defines the quantity (aka "lots" in auction terms) rules for MARKET orders on a symbol
+    MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ## Defines the maximum number of orders an account is allowed to have open on a symbol
+#    MAX_NUM_ALGO_ORDERS = "MAX_NUM_ALGO_ORDERS" ## Defines the maximum number of "algo" orders an account is allowed to have open on a symbol
+
 
   HistoricalKlinesType* = enum
     SPOT    = 1
@@ -219,6 +220,14 @@ template signQueryString(self: Binance; endpoint: static[string]) =
 proc accountData*(self: Binance): string =
   self.signQueryString"account"
 
+
+#GET /api/v3/avgPrice
+#Current average price for a symbol.
+proc avgPrice*(self: Binance, symbol: string): string =
+  result = static(binanceAPIUrl & "/api/v3/avgPrice?symbol=")
+  result.add symbol  
+
+
 #Get user wallet assets
 proc updateUserWallet(self: var Binance) =
   let wallet = parseJson(self.getContent(self.accountData))["balances"]
@@ -275,8 +284,52 @@ proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
   self.balances
 
 
-proc verifyFiltersRule(filter: FilterRule):int = 0
+proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool = 
+  var 
+    data = parseJson(self.exchangeInfo(fromMemory = true))["symbols"].getElems
+    min:float
+    max:float
+    stepSize:float
 
+  for item in data:
+    if item["symbol"].getStr == symbol:
+      var filters = item["filters"]
+      for f in filters:
+        case f["filterType"].getStr:
+        of $PRICE_FILTER:
+          min = f["minPrice"].getStr.parseFloat
+          max = f["maxPrice"].getStr.parseFloat
+          stepSize = f["tickSize"].getStr.parseFloat
+          result = price >= min and price <= max and price - (price / stepSize) * stepSize == 0
+          echo "PRICE_FILTER: ", $result
+        of $PERCENT_PRICE:       
+          min = f["multiplierDown"].getStr.parseFloat
+          max = f["multiplierUp"].getStr.parseFloat
+          stepSize = parseJson(self.getContent(self.avgPrice(symbol)))["price"].getStr.parseFloat
+          result = price >= stepSize * min and price <= stepSize * max
+          echo "PERCENT_PRICE: ", $result
+        of $MIN_NOTIONAL:
+          min = f["minNotional"].getStr.parseFloat
+          result = price * quantity >= min
+          echo "MIN_NOTIONAL: ", $result
+        of $LOT_SIZE:
+          min = f["minQty"].getStr.parseFloat
+          max = f["maxQty"].getStr.parseFloat
+          stepSize = f["stepSize"].getStr.parseFloat
+          result = quantity >= min and quantity <= max and quantity - (quantity / stepSize) * stepSize == 0
+          echo "LOT_SIZE: ", $result
+        of $MARKET_LOT_SIZE:
+          result = true
+          if tipe == ORDER_TYPE_MARKET:
+            min = f["minQty"].getStr.parseFloat
+            max = f["maxQty"].getStr.parseFloat
+            stepSize = f["stepSize"].getStr.parseFloat
+            result = quantity >= min and quantity <= max and quantity - (quantity / stepSize) * stepSize == 0
+            echo "MARKET_LOT_SIZE: ", result
+
+      break
+            
+      
 # Generic endpoints.
 
 proc ping*(self: Binance): string =
@@ -461,14 +514,16 @@ proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOr
 #POST /api/v3/order
 #Send in a new order.
 proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
+  discard self.verifyFiltersRule(symbol, price, quantity, tipe)
+
   result = "symbol="
   result.add symbol
   result.add "&side="
   result.add $side
   result.add "&type="
   result.add $tipe
-  result.add "&timeInForce="
-  result.add timeInForce
+#  result.add "&timeInForce="
+#  result.add timeInForce
   result.add "&quantity="
   result.add $quantity
   result.add "&price="
@@ -476,7 +531,8 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol:
   self.signQueryString"order"
 
 
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity: float): string =
+  echo "short"
   result = "symbol="
   result.add symbol
   result.add "&side="
@@ -485,6 +541,8 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add $tipe
   result.add "&quantity="
   result.add $quantity
+  result.add "&timeInForce="
+  result.add timeInForce
   self.signQueryString"order"
 
 
