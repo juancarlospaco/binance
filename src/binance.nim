@@ -201,7 +201,7 @@ converter date_to_milliseconds(d: Duration): int64 =
 
 template close*(self: Binance) = self.client.close()
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
-template request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string = self.client.request(endpoint, httpMethod = httpMethod).body
+template request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
 template signQueryString(self: Binance; endpoint: static[string]) =
