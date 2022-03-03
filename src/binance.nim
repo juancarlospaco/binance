@@ -585,14 +585,6 @@ proc userDataStream*(self: Binance): string =
   result = binanceAPIUrl & "/api/v3/userDataStream"
 
 
-proc userDataStream*(self: Binance): string =
-  ## Start a new user data stream.
-  ## * `POST` to Open a new user data stream.
-  ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
-  ## * `GET` to Keep Alive an existing user data stream.
-  result = binanceAPIUrl & "/api/v3/userDataStream"
-
-
 proc getProducts*(self: Binance): string =
   ## Undocumented API endpoint ?, no auth required ?.
   "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
