@@ -1,4 +1,4 @@
-import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os], binance/binance_sha256
+import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os, algorithm], binance/binance_sha256
 
 
 type
@@ -588,6 +588,20 @@ proc userDataStream*(self: Binance): string =
 proc getProducts*(self: Binance): string =
   ## Undocumented API endpoint ?, no auth required ?.
   "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
+
+
+proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Positive): seq[tuple[marketCap: int, ticker: string]] =
+  ## Get top market cap trading pairs, ordered from big to small, filtered by `stablecoin`, maximum of `limit`.
+  ## * This needs to iterate all pairs sadly, because the API sends it unordered, >300 pairs for any `stablecoin`.
+  assert stablecoin.len > 0, "stablecoin must not be empty string"
+  let data: JsonNode = parseJson(self.request(self.getProducts()))["data"]
+  result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
+  for coin in data:
+    let pair: string = coin["s"].getStr
+    if pair.endsWith(stablecoin) and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
+      result.add (marketCap: int(coin["cs"].getInt.float * coin["c"].getStr.parseFloat), ticker: pair)
+  result.sort Descending
+  result.setLen limit
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
