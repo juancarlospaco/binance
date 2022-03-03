@@ -598,7 +598,7 @@ proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Posit
   result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
   for coin in data:
     let pair: string = coin["s"].getStr
-    if pair.endsWith(stablecoin) and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
+    if coin["q"].getStr == stablecoin and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
       result.add (marketCap: int(coin["cs"].getInt.float * coin["c"].getStr.parseFloat), ticker: pair)
   result.sort Descending
   result.setLen limit
