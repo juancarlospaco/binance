@@ -13,7 +13,7 @@ type
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
     PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
     LOT_SIZE            = "LOT_SIZE"            ## Defines the quantity (aka "lots" in auction terms) rules for a symbol
-    MIN_NOTIONAL        = "MIN_NOTIONAL"        ##   
+    MIN_NOTIONAL        = "MIN_NOTIONAL"        ##
     ICEBERG_PARTS       = "ICEBERG_PARTS"       ##
     MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ##
     MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ##
@@ -199,8 +199,10 @@ converter date_to_milliseconds(d: Duration): int64 =
   epoch.inMilliseconds
 
 
-template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 template close*(self: Binance) = self.client.close()
+template getContent*(self: Binance, url: string): string = self.client.getContent(url)
+template request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string = self.client.request(endpoint, httpMethod = httpMethod).body
+
 
 template signQueryString(self: Binance; endpoint: static[string]) =
   ## Sign the query string for Binance API, reusing the same string.
@@ -223,7 +225,7 @@ proc accountData*(self: Binance): string =
 proc updateUserWallet(self: var Binance) =
   let wallet = parseJson(self.getContent(self.accountData))["balances"]
   self.balances = initTable[string, tuple[free: float, locked: float]]()
-  for asset in wallet: 
+  for asset in wallet:
     # Hide 0 balances
     if asset["free"].getStr.parseFloat != 0.0:
       self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
@@ -255,7 +257,7 @@ proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool =
             fetched.add symbol
             result.add k.pretty
 
-    
+
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
@@ -266,11 +268,11 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   result.updateUserWallet
   # retrives exchange info for trading uses
   result.exchangeData = result.getContent(result.exchangeInfo())
-  
+
 
 ## Retrives current or updated wallet info
-proc userWallet*(self: var Binance, update:bool = false): self.balances.type = 
-  if update: 
+proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
+  if update:
     self.updateUserWallet
   self.balances
 
@@ -572,10 +574,6 @@ proc openOrders*(self: Binance, symbol: string): string =
   self.signQueryString"openOrders"
 
 
-proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
-  self.client.request(endpoint, httpMethod = httpMethod).body
-
-
 # User data streams
 
 
@@ -585,6 +583,19 @@ proc userDataStream*(self: Binance): string =
   ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
   ## * `GET` to Keep Alive an existing user data stream.
   result = binanceAPIUrl & "/api/v3/userDataStream"
+
+
+proc userDataStream*(self: Binance): string =
+  ## Start a new user data stream.
+  ## * `POST` to Open a new user data stream.
+  ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
+  ## * `GET` to Keep Alive an existing user data stream.
+  result = binanceAPIUrl & "/api/v3/userDataStream"
+
+
+proc getProducts*(self: Binance): string =
+  ## Undocumented API endpoint ?, no auth required ?.
+  "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
