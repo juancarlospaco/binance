@@ -8,6 +8,7 @@ type
     client: HttpClient
     balances: Table[string, tuple[free: float, locked: float]]
     exchangeData: string
+    prechecks*: bool 
 
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
@@ -273,11 +274,11 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
   # user wallet is cached in memory at runtime
   result.updateUserWallet
-  # retrives exchange info for trading uses
+  # retrieves exchange info for trading uses
   result.exchangeData = result.getContent(result.exchangeInfo())
   
 
-## Retrives current or updated wallet info
+## Retrieves current or updated wallet info
 proc userWallet*(self: var Binance, update:bool = false): self.balances.type = 
   if update: 
     self.updateUserWallet
@@ -297,10 +298,13 @@ proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe
       for f in filters:
         case f["filterType"].getStr:
         of $PRICE_FILTER:
-          min = f["minPrice"].getStr.parseFloat
-          max = f["maxPrice"].getStr.parseFloat
-          stepSize = f["tickSize"].getStr.parseFloat
-          result = price >= min and price <= max and price - (price / stepSize) * stepSize == 0
+          result = true
+          # price_filter is disabled for market orders
+          if tipe != ORDER_TYPE_MARKET:
+            min = f["minPrice"].getStr.parseFloat
+            max = f["maxPrice"].getStr.parseFloat
+            stepSize = f["tickSize"].getStr.parseFloat
+            result = price >= min and price <= max and price - (price / stepSize) * stepSize == 0
           echo "PRICE_FILTER: ", $result
         of $PERCENT_PRICE:       
           min = f["multiplierDown"].getStr.parseFloat
@@ -316,7 +320,7 @@ proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe
           min = f["minQty"].getStr.parseFloat
           max = f["maxQty"].getStr.parseFloat
           stepSize = f["stepSize"].getStr.parseFloat
-          result = quantity >= min and quantity <= max and quantity - (quantity / stepSize) * stepSize == 0
+          result = quantity >= min and quantity <= max and round(quantity - (quantity / stepSize) * stepSize) == 0
           echo "LOT_SIZE: ", $result
         of $MARKET_LOT_SIZE:
           result = true
@@ -324,7 +328,7 @@ proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe
             min = f["minQty"].getStr.parseFloat
             max = f["maxQty"].getStr.parseFloat
             stepSize = f["stepSize"].getStr.parseFloat
-            result = quantity >= min and quantity <= max and quantity - (quantity / stepSize) * stepSize == 0
+            result = quantity >= min and quantity <= max and round(quantity - (quantity / stepSize) * stepSize) == 0
             echo "MARKET_LOT_SIZE: ", result
 
       break
@@ -513,8 +517,8 @@ proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOr
 
 #POST /api/v3/order
 #Send in a new order.
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
-  discard self.verifyFiltersRule(symbol, price, quantity, tipe)
+proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
+  self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
 
   result = "symbol="
   result.add symbol
@@ -522,17 +526,19 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol:
   result.add $side
   result.add "&type="
   result.add $tipe
-#  result.add "&timeInForce="
-#  result.add timeInForce
   result.add "&quantity="
   result.add $quantity
-  result.add "&price="
-  result.add $price
+
+  if tipe == ORDER_TYPE_LIMIT:
+    result.add "&timeInForce="
+    result.add timeInForce
+    result.add "&price="
+    result.add $price
+
   self.signQueryString"order"
 
 
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity: float): string =
-  echo "short"
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
   result = "symbol="
   result.add symbol
   result.add "&side="
@@ -541,8 +547,6 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol:
   result.add $tipe
   result.add "&quantity="
   result.add $quantity
-  result.add "&timeInForce="
-  result.add timeInForce
   self.signQueryString"order"
 
 
