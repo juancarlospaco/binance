@@ -478,6 +478,20 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol:
   self.signQueryString"order"
 
 
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity, price: float): string =
+  result = "symbol="
+  result.add symbol
+  result.add "&side="
+  result.add $side
+  result.add "&type="
+  result.add $tipe
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&price="
+  result.add $price
+  self.signQueryString"order"
+
+
 proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
   result = "symbol="
   result.add symbol
