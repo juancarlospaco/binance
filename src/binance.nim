@@ -10,6 +10,9 @@ type
     exchangeData: string
     prechecks*: bool 
 
+  MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
+  TradingInfo* = tuple[baseAsset, quoteAsset: string, price, ammount, balance: float]
+
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
     PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
@@ -285,6 +288,8 @@ proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
   if update: 
     self.updateUserWallet
   self.balances
+
+
 
 
 proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool = 
@@ -666,7 +671,7 @@ proc getProducts*(self: Binance): string =
   "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
 
 
-proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Positive): seq[tuple[marketCap: int, ticker: string]] =
+proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Positive): MarketCap =
   ## Get top market cap trading pairs, ordered from big to small, filtered by `stablecoin`, maximum of `limit`.
   ## * This needs to iterate all pairs sadly, because the API sends it unordered, >300 pairs for any `stablecoin`.
   assert stablecoin.len > 0, "stablecoin must not be empty string"
