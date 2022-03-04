@@ -1,4 +1,4 @@
-import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os], binance/binance_sha256
+import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os, algorithm], binance/binance_sha256
 
 
 type
@@ -201,8 +201,10 @@ converter date_to_milliseconds(d: Duration): int64 =
   epoch.inMilliseconds
 
 
-template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 template close*(self: Binance) = self.client.close()
+template getContent*(self: Binance, url: string): string = self.client.getContent(url)
+proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
+
 
 template signQueryString(self: Binance; endpoint: static[string]) =
   ## Sign the query string for Binance API, reusing the same string.
@@ -233,7 +235,7 @@ proc avgPrice*(self: Binance, symbol: string): string =
 proc updateUserWallet(self: var Binance) =
   let wallet = parseJson(self.getContent(self.accountData))["balances"]
   self.balances = initTable[string, tuple[free: float, locked: float]]()
-  for asset in wallet: 
+  for asset in wallet:
     # Hide 0 balances
     if asset["free"].getStr.parseFloat != 0.0:
       self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
@@ -265,7 +267,7 @@ proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool =
             fetched.add symbol
             result.add k.pretty
 
-    
+
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
@@ -276,7 +278,7 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   result.updateUserWallet
   # retrieves exchange info for trading uses
   result.exchangeData = result.getContent(result.exchangeInfo())
-  
+
 
 ## Retrieves current or updated wallet info
 proc userWallet*(self: var Binance, update:bool = false): self.balances.type = 
@@ -538,6 +540,20 @@ proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, sym
   self.signQueryString"order"
 
 
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity, price: float): string =
+  result = "symbol="
+  result.add symbol
+  result.add "&side="
+  result.add $side
+  result.add "&type="
+  result.add $tipe
+  result.add "&quantity="
+  result.add $quantity
+  result.add "&price="
+  result.add $price
+  self.signQueryString"order"
+
+
 proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
   result = "symbol="
   result.add symbol
@@ -634,10 +650,6 @@ proc openOrders*(self: Binance, symbol: string): string =
   self.signQueryString"openOrders"
 
 
-proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string =
-  self.client.request(endpoint, httpMethod = httpMethod).body
-
-
 # User data streams
 
 
@@ -647,6 +659,32 @@ proc userDataStream*(self: Binance): string =
   ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
   ## * `GET` to Keep Alive an existing user data stream.
   result = binanceAPIUrl & "/api/v3/userDataStream"
+
+
+proc getProducts*(self: Binance): string =
+  ## Undocumented API endpoint ?, no auth required ?.
+  "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
+
+
+proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Positive): seq[tuple[marketCap: int, ticker: string]] =
+  ## Get top market cap trading pairs, ordered from big to small, filtered by `stablecoin`, maximum of `limit`.
+  ## * This needs to iterate all pairs sadly, because the API sends it unordered, >300 pairs for any `stablecoin`.
+  assert stablecoin.len > 0, "stablecoin must not be empty string"
+  let data: JsonNode = parseJson(self.request(self.getProducts()))["data"]
+  result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
+  for coin in data:
+    let pair: string = coin["s"].getStr
+    if coin["q"].getStr == stablecoin and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
+      result.add (marketCap: int(coin["cs"].getInt.float * coin["c"].getStr.parseFloat), ticker: pair)
+  result.sort Descending
+  result.setLen limit
+
+
+proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h: float] =
+  ## Get 24 hours Highest price and Lowest price for a symbol.
+  assert symbolTicker.len > 0, "symbolTicker must not be empty string"
+  let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))
+  result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
