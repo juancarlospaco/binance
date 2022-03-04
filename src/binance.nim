@@ -618,6 +618,13 @@ proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Posit
   result.setLen limit
 
 
+proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h: float] =
+  ## Get 24 hours Highest price and Lowest price for a symbol.
+  assert symbolTicker.len > 0, "symbolTicker must not be empty string"
+  let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))
+  result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
+
+
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
   let preparedEndpoint: string = client.ping()
