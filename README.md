@@ -43,6 +43,7 @@ echo client.request(preparedEndpoint, HttpPost)
 # More
 
 - See also https://github.com/juancarlospaco/tradingview#tradingview
+- See also https://github.com/juancarlospaco/cloudbet#cloudbet
 
 
 # Stars
