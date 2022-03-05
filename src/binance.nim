@@ -11,7 +11,7 @@ type
     prechecks*: bool 
 
   MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
-  TradingInfo* = tuple[baseAsset, quoteAsset: string, price, ammount, balance: float]
+  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float]
 
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
@@ -679,7 +679,6 @@ proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Posit
   result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
   for coin in data:
     let pair: string = coin["s"].getStr
-    if len(pair) == 0: continue
     if coin["q"].getStr == stablecoin and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
       result.add (marketCap: int(coin["cs"].getInt.float * coin["c"].getStr.parseFloat), ticker: pair)
   result.sort Descending
@@ -691,6 +690,52 @@ proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h
   assert symbolTicker.len > 0, "symbolTicker must not be empty string"
   let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))
   result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
+
+
+proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
+  var
+    symbolToBuy:string
+    amount = 0.0
+    myWallet = self.userWallet()
+    exchangeData = parseJson(self.exchangeInfo(fromMemory = true))["symbols"]
+    marketDetails: Table[string, MarketCap]
+    market: MarketCap
+    coin: string
+    balance: tuple[free: float, locked: float]
+
+  #produces possible trading operations for every coin in your wallet
+  for p in pairs(myWallet):
+    (coin, balance) = p
+    var data = self.getTopMarketCapPairs(coin, 5)
+    for d in data:
+      if (0,"") != d:
+        marketDetails[coin] = data
+
+  #find a price and a minimal amount required for trade
+  for assets in pairs(marketDetails):
+    (coin, market) = assets
+
+    for m in marketDetails[coin]:
+
+      var tp = parseJson(self.request(self.tickerPrice(m[1])))
+      var priceToBuy = tp["price"].getStr.parseFloat
+
+      for asset in exchangeData:
+        if asset["symbol"].getStr == tp["symbol"].getStr:
+          symbolToBuy = asset["quoteAsset"].getStr
+          var min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
+
+          if symbolToBuy in @["USDT","BSUD"]: min_amount += 1
+
+          var stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
+          amount = round(min_amount / priceToBuy,5)
+
+          while amount * priceToBuy <= min_amount:
+            amount += stepSize
+
+          result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,3), round(amount,3))
+
+          break
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
