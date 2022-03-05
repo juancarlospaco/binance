@@ -13,7 +13,7 @@
 
 # Requisites
 
-- Valid API Key and API Secret, get it for free at https://www.binance.com/en/my/settings/api-management
+- Valid API Key and API Secret, with trading permissions, get it for free at https://www.binance.com/en/my/settings/api-management
 
 ![](api_key_web.png)
 
