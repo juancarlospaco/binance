@@ -14,6 +14,9 @@
 # Requisites
 
 - Valid API Key and API Secret, get it for free at https://www.binance.com/en/my/settings/api-management
+
+![](api_key_web.png)
+
 - Device Date and Time must be configured, up to the seconds precision, Binance is strict about Timestamps.
 
 
@@ -53,4 +56,4 @@ echo client.request(preparedEndpoint, HttpPost)
 :star: [@kennym](https://github.com/kennym '2022-02-16')
 :star: [@nickolaz](https://github.com/nickolaz '2022-02-18')
 :star: [@Nacho512](https://github.com/Nacho512 '2022-02-20')
-:star: [@hannylicious](https://github.com/hannylicious '2022-03-02')	
+:star: [@hannylicious](https://github.com/hannylicious '2022-03-02')
