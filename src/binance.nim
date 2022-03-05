@@ -8,7 +8,7 @@ type
     client: HttpClient
     balances: Table[string, tuple[free: float, locked: float]]
     exchangeData: string
-    prechecks*: bool 
+    prechecks*: bool
 
   MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
   TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float]
@@ -17,7 +17,7 @@ type
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
     PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
     LOT_SIZE            = "LOT_SIZE"            ## Defines the quantity (aka "lots" in auction terms) rules for a symbol
-    MIN_NOTIONAL        = "MIN_NOTIONAL"        ## Defines the minimum notional value allowed for an order on a symbol  
+    MIN_NOTIONAL        = "MIN_NOTIONAL"        ## Defines the minimum notional value allowed for an order on a symbol
 #    ICEBERG_PARTS       = "ICEBERG_PARTS"       ## Defines the maximum parts an iceberg order can have
     MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ## Defines the quantity (aka "lots" in auction terms) rules for MARKET orders on a symbol
     MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ## Defines the maximum number of orders an account is allowed to have open on a symbol
@@ -231,7 +231,7 @@ proc accountData*(self: Binance): string =
 #Current average price for a symbol.
 proc avgPrice*(self: Binance, symbol: string): string =
   result = static(binanceAPIUrl & "/api/v3/avgPrice?symbol=")
-  result.add symbol  
+  result.add symbol
 
 
 #Get user wallet assets
@@ -284,16 +284,16 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
 
 
 ## Retrieves current or updated wallet info
-proc userWallet*(self: var Binance, update:bool = false): self.balances.type = 
-  if update: 
+proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
+  if update:
     self.updateUserWallet
   self.balances
 
 
 
 
-proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool = 
-  var 
+proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool =
+  var
     data = parseJson(self.exchangeInfo(fromMemory = true))["symbols"].getElems
     min:float
     max:float
@@ -313,7 +313,7 @@ proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe
             stepSize = f["tickSize"].getStr.parseFloat
             result = price >= min and price <= max and price - (price / stepSize) * stepSize == 0
           echo "PRICE_FILTER: ", $result
-        of $PERCENT_PRICE:       
+        of $PERCENT_PRICE:
           min = f["multiplierDown"].getStr.parseFloat
           max = f["multiplierUp"].getStr.parseFloat
           stepSize = parseJson(self.getContent(self.avgPrice(symbol)))["price"].getStr.parseFloat
@@ -339,8 +339,8 @@ proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe
             echo "MARKET_LOT_SIZE: ", result
 
       break
-            
-      
+
+
 # Generic endpoints.
 
 proc ping*(self: Binance): string =
@@ -725,7 +725,7 @@ proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
           symbolToBuy = asset["quoteAsset"].getStr
           var min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
 
-          if symbolToBuy in @["USDT","BSUD"]: min_amount += 1
+          if symbolToBuy in ["USDT", "BUSD"]: min_amount += 1
 
           var stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
           amount = round(min_amount / priceToBuy,5)
