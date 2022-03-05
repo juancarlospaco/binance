@@ -17,7 +17,11 @@
 
 ![](api_key_web.png)
 
-- Device Date and Time must be configured, up to the seconds precision, Binance is strict about Timestamps.
+- Device Date and Time must be configured, up to the seconds precision, Binance is strict about timestamps,
+  use https://github.com/juancarlospaco/binance/blob/nim/examples/binanceVslocalTime.nim to debug time diff.
+
+- Some stablecoin in Binance Spot wallet to trade with, >= 10 USD in USDT at least.
+- Some BNB coins in Binance Spot wallet for commisions, >= 1 USD in BNB at least.
 
 
 # Examples
