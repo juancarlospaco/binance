@@ -290,6 +290,11 @@ proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
   self.balances
 
 
+proc getStableCoinsInWallet(self: var Binance): seq[tuple[coin: string, free: float]] =
+  var myWallet = self.userWallet(update = true)
+  for coin in myWallet.keys:
+    if coin in stableCoins:
+      result.add ( coin, myWallet[coin].free )
 
 
 proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool =
