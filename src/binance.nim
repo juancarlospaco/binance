@@ -13,6 +13,10 @@ type
   MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
   TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float]
 
+  CoinType = enum
+    STABLE_COIN = "STABLE_COIN"
+    ALT_COIN    = "ALT_COIN"
+
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
     PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
@@ -290,7 +294,7 @@ proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
   self.balances
 
 
-proc getStableCoinsInWallet(self: var Binance): Table[string, float] =
+proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
   var myWallet = self.userWallet(update = true)
   for coin in myWallet.keys:
     if coin in stableCoins:
