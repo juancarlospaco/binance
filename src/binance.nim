@@ -10,10 +10,14 @@ type
     exchangeData: string
     prechecks*: bool
 
-  MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
-  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float]
+  TradingInfoStatus* = enum
+    PREPARED      = "PREPARED"
+    WITHOUT_FUNDS = "WITHOUT_FUNDS"
 
-  CoinType = enum
+  MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
+  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float, status: TradingInfoStatus]
+
+  CoinType* = enum
     STABLE_COIN = "STABLE_COIN"
     ALT_COIN    = "ALT_COIN"
 
@@ -710,21 +714,29 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
   if result > 120_000: result = 120_000
 
 
-proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
+proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo] =
   var
     symbolToBuy:string
-    amount = 0.0
+    current_amount = 0.0
+    virtual_current_amount = -1.0
     myWallet = self.userWallet()
     exchangeData = parseJson(self.exchangeInfo(fromMemory = true))["symbols"]
     marketDetails: Table[string, MarketCap]
     market: MarketCap
+    data: MarketCap
     coin: string
     balance: tuple[free: float, locked: float]
 
   #produces possible trading operations for every coin in your wallet
   for p in pairs(myWallet):
     (coin, balance) = p
-    var data = self.getTopMarketCapPairs(coin, 5)
+
+    if coinType == STABLE_COIN:
+      if coin in stableCoins: 
+        data = self.getTopMarketCapPairs(coin, 5)
+    else:
+      data = self.getTopMarketCapPairs(coin, 5)
+
     for d in data:
       if (0,"") != d:
         marketDetails[coin] = data
@@ -741,19 +753,23 @@ proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
       for asset in exchangeData:
         if asset["symbol"].getStr == tp["symbol"].getStr:
           symbolToBuy = asset["quoteAsset"].getStr
-          var min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
+          let min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
+          let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
 
-          if symbolToBuy in ["USDT", "BUSD"]: min_amount += 1
+          if virtual_current_amount < 0:
+            current_amount = self.getStableCoinsInWallet()[symbolToBuy]
+            virtual_current_amount = current_amount
 
-          var stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
-          amount = round(min_amount / priceToBuy,5)
-
-          while amount * priceToBuy <= min_amount:
-            amount += stepSize
-
-          result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,3), round(amount,3))
+          if virtual_current_amount * 0.50 > min_amount:
+            current_amount *= 0.50
+            virtual_current_amount -= current_amount
+            result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), round(current_amount,4), PREPARED)
+          else:
+            result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), round(current_amount,4), WITHOUT_FUNDS)            
 
           break
+
+      virtual_current_amount = -1
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
