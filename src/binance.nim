@@ -696,8 +696,8 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
   ## Get a "dynamic" sleep time integer for use with `sleep` and loops.
   ## * If more volatility then less sleep time, and viceversa.
   assert symbolTicker.len > 0, "symbolTicker must not be empty string"
-  let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))["priceChangePercent"].getStr.parseFloat
-  result = int(baseSleep / round(if temp > 0.0: temp else: 1.0, 2))
+  let temp = round(parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))["priceChangePercent"].getStr.parseFloat, 1)
+  result = int(baseSleep / (if temp > 0.0: temp else: 1.0))
 
 
 proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
