@@ -150,7 +150,7 @@ type
 
 
 const binanceAPIUrl* {.strdefine.} = "https://api.binance.com"  ## `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
-
+const stableCoins* = ["USDT", "BUSD", "DAI", "USDC", "TUSD", "PAX"]
 
 template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static[float] = NaN) =
   ## Utility template to check if a float is valid, because float sux.
