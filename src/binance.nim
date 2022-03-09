@@ -10,8 +10,16 @@ type
     exchangeData: string
     prechecks*: bool
 
+  TradingInfoStatus* = enum
+    PREPARED      = "PREPARED"
+    WITHOUT_FUNDS = "WITHOUT_FUNDS"
+
   MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
-  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float]
+  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount, quoteAmount: float, status: TradingInfoStatus]
+
+  CoinType* = enum
+    STABLE_COIN = "STABLE_COIN"
+    ALT_COIN    = "ALT_COIN"
 
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
@@ -150,7 +158,7 @@ type
 
 
 const binanceAPIUrl* {.strdefine.} = "https://api.binance.com"  ## `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
-
+const stableCoins* = ["USDT", "BUSD", "DAI", "USDC", "TUSD", "PAX"]
 
 template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static[float] = NaN) =
   ## Utility template to check if a float is valid, because float sux.
@@ -161,7 +169,7 @@ template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static
   when not highest.isNaN: assert floaty <= highest, "Value must be <= " & $highest
 
 
-func truncate*(self: Binance; number: float, digits: uint): float =
+proc truncate*(self: Binance; number: float, digits: uint): float =
   ## Utility function to truncate a float to a certain number of digits.
   checkFloat(number)
   doAssert digits > 1, "digits must not be Zero"
@@ -180,9 +188,9 @@ func truncate*(self: Binance; number: float, digits: uint): float =
 
       if countDigit == digits:
         break
-    result = parseFloat(resp[0..2])
+    result = parseFloat(resp[0 .. 5])
   else:
-    result = round(number)
+    result = round(number,2)
 
 
 converter interval_to_milliseconds(interval: Interval): int =
@@ -290,6 +298,11 @@ proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
   self.balances
 
 
+proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
+  var myWallet = self.userWallet(update = true)
+  for coin in myWallet.keys:
+    if coin in stableCoins:
+      result[coin] = myWallet[coin].free
 
 
 proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool =
@@ -534,13 +547,13 @@ proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, sym
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add $quantity
+  result.add quantity.formatFloat(ffDecimal, 4)
 
   if tipe == ORDER_TYPE_LIMIT:
     result.add "&timeInForce="
     result.add timeInForce
     result.add "&price="
-    result.add $price
+    result.add price.formatFloat(ffDecimal, 2)
 
   self.signQueryString"order"
 
@@ -701,21 +714,30 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
   if result > 120_000: result = 120_000
 
 
-proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
+proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo] =
   var
     symbolToBuy:string
-    amount = 0.0
+    current_amount = 0.0
+    virtual_current_amount = -1.0
     myWallet = self.userWallet()
     exchangeData = parseJson(self.exchangeInfo(fromMemory = true))["symbols"]
     marketDetails: Table[string, MarketCap]
     market: MarketCap
+    data: MarketCap
     coin: string
     balance: tuple[free: float, locked: float]
+    checked_assets: seq[string]
 
   #produces possible trading operations for every coin in your wallet
   for p in pairs(myWallet):
     (coin, balance) = p
-    var data = self.getTopMarketCapPairs(coin, 5)
+
+    if coinType == STABLE_COIN:
+      if coin in stableCoins: 
+        data = self.getTopMarketCapPairs(coin, 5)
+    else:
+      data = self.getTopMarketCapPairs(coin, 5)
+
     for d in data:
       if (0,"") != d:
         marketDetails[coin] = data
@@ -725,26 +747,33 @@ proc prepareTransactions*(self: var Binance):seq[TradingInfo] =
     (coin, market) = assets
 
     for m in marketDetails[coin]:
-
       var tp = parseJson(self.request(self.tickerPrice(m[1])))
       var priceToBuy = tp["price"].getStr.parseFloat
 
       for asset in exchangeData:
-        if asset["symbol"].getStr == tp["symbol"].getStr:
-          symbolToBuy = asset["quoteAsset"].getStr
-          var min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
+        if asset["symbol"].getStr notin checked_assets:
+          if asset["symbol"].getStr == tp["symbol"].getStr:
+            checked_assets.add asset["symbol"].getStr
+            symbolToBuy = asset["quoteAsset"].getStr
+            let min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
+            let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
 
-          if symbolToBuy in ["USDT", "BUSD"]: min_amount += 1
+            if virtual_current_amount < 0:
+              current_amount = self.getStableCoinsInWallet()[symbolToBuy]
+              virtual_current_amount = current_amount
 
-          var stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
-          amount = round(min_amount / priceToBuy,5)
+            if virtual_current_amount * 0.50 > min_amount:
+              current_amount *= 0.50
+              virtual_current_amount -= current_amount
+              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), current_amount / priceToBuy, current_amount, PREPARED)
+            else:
+              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4),current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)            
 
-          while amount * priceToBuy <= min_amount:
-            amount += stepSize
+            virtual_current_amount = current_amount
+            break
 
-          result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,3), round(amount,3))
+#      virtual_current_amount = -1
 
-          break
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
