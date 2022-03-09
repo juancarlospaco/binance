@@ -15,7 +15,7 @@ type
     WITHOUT_FUNDS = "WITHOUT_FUNDS"
 
   MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
-  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount: float, status: TradingInfoStatus]
+  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount, quoteAmount: float, status: TradingInfoStatus]
 
   CoinType* = enum
     STABLE_COIN = "STABLE_COIN"
@@ -169,7 +169,7 @@ template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static
   when not highest.isNaN: assert floaty <= highest, "Value must be <= " & $highest
 
 
-func truncate*(self: Binance; number: float, digits: uint): float =
+proc truncate*(self: Binance; number: float, digits: uint): float =
   ## Utility function to truncate a float to a certain number of digits.
   checkFloat(number)
   doAssert digits > 1, "digits must not be Zero"
@@ -188,9 +188,9 @@ func truncate*(self: Binance; number: float, digits: uint): float =
 
       if countDigit == digits:
         break
-    result = parseFloat(resp[0..2])
+    result = parseFloat(resp[0 .. 5])
   else:
-    result = round(number)
+    result = round(number,2)
 
 
 converter interval_to_milliseconds(interval: Interval): int =
@@ -547,13 +547,13 @@ proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, sym
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add $quantity
+  result.add quantity.formatFloat(ffDecimal, 4)
 
   if tipe == ORDER_TYPE_LIMIT:
     result.add "&timeInForce="
     result.add timeInForce
     result.add "&price="
-    result.add $price
+    result.add price.formatFloat(ffDecimal, 2)
 
   self.signQueryString"order"
 
@@ -726,6 +726,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
     data: MarketCap
     coin: string
     balance: tuple[free: float, locked: float]
+    checked_assets: seq[string]
 
   #produces possible trading operations for every coin in your wallet
   for p in pairs(myWallet):
@@ -746,30 +747,33 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
     (coin, market) = assets
 
     for m in marketDetails[coin]:
-
       var tp = parseJson(self.request(self.tickerPrice(m[1])))
       var priceToBuy = tp["price"].getStr.parseFloat
 
       for asset in exchangeData:
-        if asset["symbol"].getStr == tp["symbol"].getStr:
-          symbolToBuy = asset["quoteAsset"].getStr
-          let min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
-          let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
+        if asset["symbol"].getStr notin checked_assets:
+          if asset["symbol"].getStr == tp["symbol"].getStr:
+            checked_assets.add asset["symbol"].getStr
+            symbolToBuy = asset["quoteAsset"].getStr
+            let min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
+            let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
 
-          if virtual_current_amount < 0:
-            current_amount = self.getStableCoinsInWallet()[symbolToBuy]
+            if virtual_current_amount < 0:
+              current_amount = self.getStableCoinsInWallet()[symbolToBuy]
+              virtual_current_amount = current_amount
+
+            if virtual_current_amount * 0.50 > min_amount:
+              current_amount *= 0.50
+              virtual_current_amount -= current_amount
+              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), current_amount / priceToBuy, current_amount, PREPARED)
+            else:
+              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4),current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)            
+
             virtual_current_amount = current_amount
+            break
 
-          if virtual_current_amount * 0.50 > min_amount:
-            current_amount *= 0.50
-            virtual_current_amount -= current_amount
-            result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), round(current_amount,4), PREPARED)
-          else:
-            result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), round(current_amount,4), WITHOUT_FUNDS)            
+#      virtual_current_amount = -1
 
-          break
-
-      virtual_current_amount = -1
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
