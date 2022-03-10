@@ -714,6 +714,24 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
   if result > 120_000: result = 120_000
 
 
+proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
+  var
+    tp = parseJson(self.request(self.tickerPrice(ticker))) 
+    data = parseJson(self.exchangeInfo(symbols = @[ticker], fromMemory = true))["symbols"]
+    current_amount = self.getStableCoinsInWallet()[data["quoteAsset"].getStr] 
+    baseAsset  = data["baseAsset"].getStr
+    quoteAsset = data["quoteAsset"].getStr
+    priceToBuy = tp["priceToBuy"].getStr.parseFloat
+
+  let min_amount = data["filters"][3]["minNotional"].getStr.parseFloat
+  
+  if current_amount * 0.50 > min_amount:
+    current_amount *= 0.50
+    result = (baseAsset, quoteAsset, priceToBuy, current_amount / priceToBuy, current_amount, PREPARED)
+  else:
+    result = (baseAsset, quoteAsset, priceToBuy, current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)
+
+
 proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo] =
   var
     symbolToBuy:string
