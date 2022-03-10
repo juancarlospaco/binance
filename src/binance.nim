@@ -733,7 +733,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
     (coin, balance) = p
 
     if coinType == STABLE_COIN:
-      if coin in stableCoins: 
+      if coin in stableCoins:
         data = self.getTopMarketCapPairs(coin, 5)
     else:
       data = self.getTopMarketCapPairs(coin, 5)
@@ -767,13 +767,17 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
               virtual_current_amount -= current_amount
               result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), current_amount / priceToBuy, current_amount, PREPARED)
             else:
-              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4),current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)            
+              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4),current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)
 
             virtual_current_amount = current_amount
             break
 
 #      virtual_current_amount = -1
 
+
+proc getBnb*(self: var Binance): float =
+  ## Get BNB in user wallet, this is useful for Commisions.
+  try: self.userWallet(update = true)["BNB"].free except Exception: 0.0
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
