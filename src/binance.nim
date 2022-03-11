@@ -798,6 +798,9 @@ proc getBnb*(self: var Binance): float =
   ## Get BNB in user wallet, this is useful for Commisions.
   try: self.userWallet(update = true)["BNB"].free except Exception: 0.0
 
+# Wallet endpoints
+proc getAllCapital*(self: Binance): string =
+  self.signQueryString"get/sapi/v1/capital/config/getall"
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
