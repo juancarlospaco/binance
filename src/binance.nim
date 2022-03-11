@@ -539,6 +539,7 @@ proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOr
 #Send in a new order.
 proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
   self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
+  echo quantity.formatFloat(ffDecimal, 4)
 
   result = "symbol="
   result.add symbol
@@ -566,9 +567,9 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add $quantity
+  result.add quantity.formatFloat(ffDecimal, 4)
   result.add "&price="
-  result.add $price
+  result.add price.formatFloat(ffDecimal, 2)
   self.signQueryString"order"
 
 
@@ -580,7 +581,7 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add $quantity
+  result.add quantity.formatFloat(ffDecimal, 4)
   self.signQueryString"order"
 
 
@@ -647,13 +648,13 @@ proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, st
   result = "symbol="
   result.add symbol
   result.add "&price="
-  result.add $price
+  result.add price.formatFloat(ffDecimal, 2)
   result.add "&quantity="
-  result.add $quantity
+  result.add quantity.formatFloat(ffDecimal, 4)
   result.add "&stopPrice="
-  result.add $stopPrice
+  result.add stopPrice.formatFloat(ffDecimal, 2)
   result.add "&stopLimitPrice="
-  result.add $stopLimitPrice
+  result.add stopLimitPrice.formatFloat(ffDecimal, 4)
   result.add "&stopLimitTimeInForce="
   result.add stopLimitTimeInForce
   result.add "&side="
@@ -717,11 +718,11 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
 proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
   var
     tp = parseJson(self.request(self.tickerPrice(ticker))) 
-    data = parseJson(self.exchangeInfo(symbols = @[ticker], fromMemory = true))["symbols"]
+    data = parseJson(self.exchangeInfo(symbols = @[ticker], fromMemory = true))
     current_amount = self.getStableCoinsInWallet()[data["quoteAsset"].getStr] 
     baseAsset  = data["baseAsset"].getStr
     quoteAsset = data["quoteAsset"].getStr
-    priceToBuy = tp["priceToBuy"].getStr.parseFloat
+    priceToBuy = tp["price"].getStr.parseFloat
 
   let min_amount = data["filters"][3]["minNotional"].getStr.parseFloat
   
