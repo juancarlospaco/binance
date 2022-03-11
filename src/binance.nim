@@ -217,17 +217,16 @@ template getContent*(self: Binance, url: string): string = self.client.getConten
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
-template signQueryString(self: Binance; endpoint: static[string]) =
+template signQueryString(self: Binance; endpoint: static[string], sapi:bool = false) =
   ## Sign the query string for Binance API, reusing the same string.
-  result.add "&recvWindow="
+  result.add if not sapi: "&recvWindow=" else: "recvWindow="
   result.addInt self.recvWindow
   result.add "&timestamp="
   result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
   let signature: string = sha256.hmac(self.apiSecret, result)
   result.add "&signature="
   result.add signature
-  result = static(binanceAPIUrl & "/api/v3/" & endpoint & '?') & result
-
+  result = static(binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?') & result
 
 #GET /api/v3/account
 #Get the current account information
@@ -800,7 +799,7 @@ proc getBnb*(self: var Binance): float =
 
 # Wallet endpoints
 proc getAllCapital*(self: Binance): string =
-  self.signQueryString"get/sapi/v1/capital/config/getall"
+  self.signQueryString("capital/config/getall", sapi = true)
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
