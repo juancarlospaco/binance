@@ -801,6 +801,15 @@ proc getBnb*(self: var Binance): float =
 proc getAllCapital*(self: Binance): string =
   self.signQueryString("capital/config/getall", sapi = true)
 
+proc withDrawApply*(self: Binance, coin, address: string, amount: float): string =
+  result.add "coin="
+  result.add coin
+  result.add "&address"
+  result.add address
+  result.add "&amount"
+  result.add amount.formatFloat(ffDecimal, 4)
+  self.signQueryString("capital/withdraw/apply", sapi = true)
+
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
   let preparedEndpoint: string = client.ping()
