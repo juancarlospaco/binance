@@ -217,17 +217,16 @@ template getContent*(self: Binance, url: string): string = self.client.getConten
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
-template signQueryString(self: Binance; endpoint: static[string]) =
+template signQueryString(self: Binance; endpoint: static[string], sapi: bool = false, appendRecvWindow: bool = true) =
   ## Sign the query string for Binance API, reusing the same string.
-  result.add "&recvWindow="
+  result.add if appendRecvWindow and sapi: "&recvWindow=" else: "recvWindow="
   result.addInt self.recvWindow
   result.add "&timestamp="
   result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
   let signature: string = sha256.hmac(self.apiSecret, result)
   result.add "&signature="
   result.add signature
-  result = static(binanceAPIUrl & "/api/v3/" & endpoint & '?') & result
-
+  result = static(binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?') & result
 
 #GET /api/v3/account
 #Get the current account information
@@ -798,6 +797,27 @@ proc getBnb*(self: var Binance): float =
   ## Get BNB in user wallet, this is useful for Commisions.
   try: self.userWallet(update = true)["BNB"].free except Exception: 0.0
 
+# Wallet endpoints
+proc getAllCapital*(self: Binance): string =
+  self.signQueryString("capital/config/getall", sapi = true)
+
+proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
+  result.add "coin="
+  result.add coin
+  result.add "&address="
+  result.add address
+  result.add "&amount="
+  result.add amount.formatFloat(ffDecimal, 4)
+  result.add "&network="
+  result.add network
+  self.signQueryString("capital/withdraw/apply", sapi = true)
+
+
+proc apiRestrictions*(self: Binance): string =
+  self.signQueryString("account/apiRestrictions", sapi = true)
+
+proc enableFastWithdraw*(self: Binance): string =
+  self.signQueryString("account/enableFastWithdrawSwitch", sapi = true)
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
