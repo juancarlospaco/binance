@@ -217,9 +217,9 @@ template getContent*(self: Binance, url: string): string = self.client.getConten
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
-template signQueryString(self: Binance; endpoint: static[string], sapi:bool = false) =
+template signQueryString(self: Binance; endpoint: static[string], sapi: bool = false, appendRecvWindow: bool = true) =
   ## Sign the query string for Binance API, reusing the same string.
-  result.add if not sapi: "&recvWindow=" else: "recvWindow="
+  result.add if appendRecvWindow and sapi: "&recvWindow=" else: "recvWindow="
   result.addInt self.recvWindow
   result.add "&timestamp="
   result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
@@ -801,14 +801,23 @@ proc getBnb*(self: var Binance): float =
 proc getAllCapital*(self: Binance): string =
   self.signQueryString("capital/config/getall", sapi = true)
 
-proc withDrawApply*(self: Binance, coin, address: string, amount: float): string =
+proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
   result.add "coin="
   result.add coin
-  result.add "&address"
+  result.add "&address="
   result.add address
-  result.add "&amount"
+  result.add "&amount="
   result.add amount.formatFloat(ffDecimal, 4)
+  result.add "&network="
+  result.add network
   self.signQueryString("capital/withdraw/apply", sapi = true)
+
+
+proc apiRestrictions*(self: Binance): string =
+  self.signQueryString("account/apiRestrictions", sapi = true)
+
+proc enableFastWithdraw*(self: Binance): string =
+  self.signQueryString("account/enableFastWithdrawSwitch", sapi = true)
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
