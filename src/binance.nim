@@ -803,6 +803,15 @@ proc getBnbPrice*(self: Binance): string {.inline.} =
   result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=BNBUSDT")
 
 
+proc checkEarnings*(self: var Binance; coin: string): bool =
+  ## Check if we made some earnings.
+  assert coin.len > 0, "coin must not be empty string"
+  let
+    cache = self.userWallet()
+    afterTrade = self.userWallet(update = true)
+  result = afterTrade[coin].free > cache[coin].free
+
+
 # Wallet endpoints
 proc getAllCapital*(self: Binance): string =
   self.signQueryString("capital/config/getall", sapi = true)
