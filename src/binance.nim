@@ -716,15 +716,15 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
 
 proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
   var
-    tp = parseJson(self.request(self.tickerPrice(ticker))) 
+    tp = parseJson(self.request(self.tickerPrice(ticker)))
     data = parseJson(self.exchangeInfo(symbols = @[ticker], fromMemory = true))
-    current_amount = self.getStableCoinsInWallet()[data["quoteAsset"].getStr] 
+    current_amount = self.getStableCoinsInWallet()[data["quoteAsset"].getStr]
     baseAsset  = data["baseAsset"].getStr
     quoteAsset = data["quoteAsset"].getStr
     priceToBuy = tp["price"].getStr.parseFloat
 
   let min_amount = data["filters"][3]["minNotional"].getStr.parseFloat
-  
+
   if current_amount * 0.50 > min_amount:
     current_amount *= 0.50
     result = (baseAsset, quoteAsset, priceToBuy, current_amount / priceToBuy, current_amount, PREPARED)
@@ -796,6 +796,12 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
 proc getBnb*(self: var Binance): float =
   ## Get BNB in user wallet, this is useful for Commisions.
   try: self.userWallet(update = true)["BNB"].free except Exception: 0.0
+
+
+proc getBnbPrice*(self: Binance): string {.inline.} =
+  ## BNB price, useful for commision calc.
+  result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=bnb")
+
 
 # Wallet endpoints
 proc getAllCapital*(self: Binance): string =
