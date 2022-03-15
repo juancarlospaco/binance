@@ -217,9 +217,9 @@ template getContent*(self: Binance, url: string): string = self.client.getConten
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
-template signQueryString(self: Binance; endpoint: static[string], sapi: bool = false, appendRecvWindow: bool = true) =
+template signQueryString(self: Binance; endpoint: static[string], sapi: bool = false) =
   ## Sign the query string for Binance API, reusing the same string.
-  result.add if appendRecvWindow and not sapi: "&recvWindow=" else: "recvWindow="
+  result.add if len(result) > 0: "&recvWindow=" else: "recvWindow="
   result.addInt self.recvWindow
   result.add "&timestamp="
   result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
