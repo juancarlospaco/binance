@@ -799,8 +799,8 @@ proc getBnb*(self: var Binance): float =
 
 
 proc getBnbPrice*(self: Binance): string {.inline.} =
-  ## BNB price, useful for commision calc.
-  result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=bnb")
+  ## BNB price in USDT, useful for commision calc.
+  result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=BNBUSDT")
 
 
 # Wallet endpoints
