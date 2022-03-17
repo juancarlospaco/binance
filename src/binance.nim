@@ -711,7 +711,7 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
   assert symbolTicker.len > 0, "symbolTicker must not be empty string"
   let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))["priceChangePercent"].getStr.parseFloat
   result = int(baseSleep / (if temp > 0.0: temp else: 1.0))
-  if result > 120_000: result = 120_000
+  if result > 100_000: result = 100_000
 
 
 proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
