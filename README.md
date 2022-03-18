@@ -34,6 +34,13 @@ echo client.request(preparedEndpoint, HttpPost)
 ```
 
 
+# TradingBot
+
+- How to create a TradingBot ?.
+
+https://github.com/juancarlospaco/binance/blob/nim/examples/newcoin.nim
+
+
 # Documentation
 
 - https://juancarlospaco.github.io/binance
