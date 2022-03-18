@@ -818,6 +818,17 @@ template donateToAddress*(self: Binance; address: string; amount = 0.0000095; co
   discard self.request(self.withDrawApply(coin, address, amount, "BSC"), HttpPost)
 
 
+proc ma50*(self: Binance; ticker: string): float =
+  ## Calculate the current Medium Average 50 of the market.
+  assert ticker.len > 0, "ticker must not be empty string"
+  var sum: float
+  let klines = self.getHistoricalKlines(ticker, KLINE_INTERVAL_15MINUTE, initDuration(hours = 15))[0]
+  if klines.len == 60:
+    for i in 10 ..< 60:
+      sum = sum + klines[i][4].getStr.parseFloat
+    result = sum / 50
+
+
 # Wallet endpoints
 proc getAllCapital*(self: Binance): string =
   self.signQueryString("capital/config/getall", sapi = true)
