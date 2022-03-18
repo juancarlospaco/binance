@@ -18,8 +18,6 @@ proc main() =
     prevCryptos = parseJson(client.request(client.tickerPrice()))
     prevLen = prevCryptos.len
 
-  doAssert prevLen > 1956, "prevLen must be a positive integer greater than 1956."
-
   while on:
     currentCryptos = parseJson(client.request(client.tickerPrice()))
     currentLen = currentCryptos.len
@@ -36,18 +34,14 @@ proc main() =
 
   for indx in newCoin ..< currentLen:
     symbol = currentCryptos[indx]["symbol"].getStr
-    doAssert symbol.len > 1, "symbol must not be empty string"
 
     for asset in exchangeData:
       if asset["symbol"].getStr == symbol:
         symbolToBuy = asset["quoteAsset"].getStr
         break
 
-    doAssert symbolToBuy.len > 0, "symbolToBuy is too short or empty string"
-
     priceToBuy = currentCryptos[i]["price"].getStr.parseFloat
     checkFloat priceToBuy
-    doAssert priceToBuy > 0.0, "priceToBuy is Negative or Zero"
 
     case symbolToBuy
     of "BTC" : amount = 0.0013
