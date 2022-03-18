@@ -812,10 +812,10 @@ proc checkEarnings*(self: var Binance; coin: string): bool =
   result = afterTrade[coin].free > cache[coin].free
 
 
-template donateToAddress*(address: string; amount = 0.0000095; coin = "BTC") =
+template donateToAddress*(self: Binance; address: string; amount = 0.0000095; coin = "BTC") =
   ## Donate to an specific `address`, using `"BSC"` network, using `"BTC"` as `coin` by default, the minimum `amount` possible of `0.0000095` by default.
   assert address.len > 1, "Please provide a valid address, BSC network."
-  discard client.request(client.withDrawApply(coin, address, amount, "BSC"), HttpPost)
+  discard self.request(self.withDrawApply(coin, address, amount, "BSC"), HttpPost)
 
 
 # Wallet endpoints
