@@ -306,6 +306,7 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
   # user wallet is cached in memory at runtime
   result.updateUserWallet
+  result.updateUserWallet(MARGIN_ACCOUNT)
   # retrieves exchange info for trading uses
   result.exchangeData = result.getContent(result.exchangeInfo())
 
