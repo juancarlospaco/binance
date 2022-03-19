@@ -1,12 +1,16 @@
 import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os, algorithm], binance/binance_sha256
 
-
 type
+
+  Balances = object
+    spot: Table[string, tuple[free, locked: float]]
+    margin: Table[string, tuple[free, locked, interest, netAsset, borrowed: float]]
+
   Binance* = object  ## Binance API Client.
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
     recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
     client: HttpClient
-    balances: Table[string, tuple[free: float, locked: float]]
+    balances: Balances
     exchangeData: string
     prechecks*: bool
 
@@ -20,6 +24,10 @@ type
   CoinType* = enum
     STABLE_COIN = "STABLE_COIN"
     ALT_COIN    = "ALT_COIN"
+
+  AccountType* = enum
+    SPOT_ACCOUNT = "SPOT"
+    MARGIN_ACCOUNT = "MARGIN"
 
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
@@ -168,7 +176,6 @@ template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static
   when not lowest.isNaN:  assert floaty >= lowest,  "Value must be >= " & $lowest
   when not highest.isNaN: assert floaty <= highest, "Value must be <= " & $highest
 
-
 proc truncate*(self: Binance; number: float, digits: uint): float =
   ## Utility function to truncate a float to a certain number of digits.
   checkFloat(number)
@@ -211,7 +218,6 @@ converter date_to_milliseconds(d: Duration): int64 =
   epoch -= d
   epoch.inMilliseconds
 
-
 template close*(self: Binance) = self.client.close()
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
@@ -228,10 +234,13 @@ template signQueryString(self: Binance; endpoint: static[string], sapi: bool = f
   result.add signature
   result = static(binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?') & result
 
-#GET /api/v3/account
+#GET /{s}api/v3/account
 #Get the current account information
-proc accountData*(self: Binance): string =
-  self.signQueryString"account"
+proc accountData*(self: Binance, accountType: AccountType = SPOT_ACCOUNT): string =
+  if accountType == SPOT_ACCOUNT: 
+    self.signQueryString"account" 
+  else: 
+    self.signQueryString("margin/account", sapi = true)
 
 
 #GET /api/v3/avgPrice
@@ -242,14 +251,25 @@ proc avgPrice*(self: Binance, symbol: string): string =
 
 
 #Get user wallet assets
-proc updateUserWallet(self: var Binance) =
-  let wallet = parseJson(self.getContent(self.accountData))["balances"]
-  self.balances = initTable[string, tuple[free: float, locked: float]]()
-  for asset in wallet:
+proc updateUserWallet(self: var Binance, accountType: AccountType = SPOT_ACCOUNT) =
+  let wallet = parseJson(self.getContent(self.accountData(accountType)))
+  var key: string
+  if accountType == SPOT_ACCOUNT:
+    self.balances.spot = initTable[string, tuple[free, locked: float]]()
+    key = "balances"
+  else:
+    self.balances.margin = initTable[string, tuple[free, locked, interest, netAsset, borrowed: float]]()
+    key = "userAssets"
+
+  let wallet_data = wallet[key]
+  for asset in wallet_data:
     # Hide 0 balances
     if asset["free"].getStr.parseFloat != 0.0:
-      self.balances[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
-
+      if accountType == SPOT_ACCOUNT:
+        self.balances.spot[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
+      else:
+        self.balances.margin[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat, asset["interest"].getStr.parseFloat, asset["netAsset"].getStr.parseFloat, asset["borrowed"].getStr.parseFloat)
+        
 
 proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool = false): string =
   ## Exchange information, info about Binance.
@@ -291,14 +311,13 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
 
 
 ## Retrieves current or updated wallet info
-proc userWallet*(self: var Binance, update:bool = false): self.balances.type =
+proc userWallet*(self: var Binance, update:bool = false, accountType: AccountType = SPOT_ACCOUNT): Balances =
   if update:
-    self.updateUserWallet
+    self.updateUserWallet(accountType)
   self.balances
 
-
 proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
-  var myWallet = self.userWallet(update = true)
+  var myWallet = self.userWallet(update = true).spot
   for coin in myWallet.keys:
     if coin in stableCoins:
       result[coin] = myWallet[coin].free
@@ -737,7 +756,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
     symbolToBuy:string
     current_amount = 0.0
     virtual_current_amount = -1.0
-    myWallet = self.userWallet()
+    myWallet = self.userWallet().spot
     exchangeData = parseJson(self.exchangeInfo(fromMemory = true))["symbols"]
     marketDetails: Table[string, MarketCap]
     market: MarketCap
@@ -795,7 +814,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
 
 proc getBnb*(self: var Binance): float =
   ## Get BNB in user wallet, this is useful for Commisions.
-  try: self.userWallet(update = true)["BNB"].free except Exception: 0.0
+  try: self.userWallet(update = true).spot["BNB"].free except Exception: 0.0
 
 
 proc getBnbPrice*(self: Binance): string {.inline.} =
@@ -807,8 +826,8 @@ proc checkEarnings*(self: var Binance; coin: string): bool =
   ## Check if we made some earnings.
   assert coin.len > 0, "coin must not be empty string"
   let
-    cache = self.userWallet()
-    afterTrade = self.userWallet(update = true)
+    cache = self.userWallet().spot
+    afterTrade = self.userWallet(update = true).spot
   result = afterTrade[coin].free > cache[coin].free
 
 
