@@ -872,9 +872,18 @@ proc enableFastWithdraw*(self: Binance): string =
 
 # Margin Account/Trade endpoints
 
+proc marginLevel*(self: Binance): float = 
+  parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["marginLevel"].getStr.parseFloat
+
+proc totalDebt*(self: Binance): float =
+  parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["totalLiabilityOfBtc"].getStr.parseFloat
+
 proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
   assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
   assert amount > 0, "Amount must be greater than 0"
+#  if tipe == MARGIN_CROSS_TO_SPOT: 
+#   doAssert amount > self.totalDebt, "Amount must be 2 times greater than total debt"
+
   result.add "asset="
   result.add asset
   result.add "&amount="
@@ -882,7 +891,6 @@ proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer)
   result.add "&type="
   result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
   self.signQueryString("margin/transfer", sapi = true)
-
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
