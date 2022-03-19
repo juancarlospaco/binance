@@ -872,7 +872,7 @@ proc enableFastWithdraw*(self: Binance): string =
 # Margin Account/Trade endpoints
 
 proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
-  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin across accounts."
+  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
   assert amount > 0, "Amount must be greater than 0"
   result.add "asset="
   result.add asset
