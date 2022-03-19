@@ -844,12 +844,25 @@ proc withDrawApply*(self: Binance, coin, address: string, amount: float, network
   result.add network
   self.signQueryString("capital/withdraw/apply", sapi = true)
 
-
 proc apiRestrictions*(self: Binance): string =
   self.signQueryString("account/apiRestrictions", sapi = true)
 
 proc enableFastWithdraw*(self: Binance): string =
   self.signQueryString("account/enableFastWithdrawSwitch", sapi = true)
+
+# Margin Account/Trade endpoints
+
+proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
+  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin across accounts."
+  assert amount > 0, "Amount must be greater than 0"
+  result.add "asset="
+  result.add asset
+  result.add "&amount="
+  result.add $amount
+  result.add "&type="
+  result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
+  self.signQueryString("margin/transfer", sapi = true)
+
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
