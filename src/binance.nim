@@ -875,6 +875,9 @@ proc enableFastWithdraw*(self: Binance): string =
 proc marginLevel*(self: Binance): float = 
   parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["marginLevel"].getStr.parseFloat
 
+proc priceIndex*(self: Binance, asset: static[string]): string =
+  result = static(binanceAPIUrl & "/sapi/v1/margin/priceIndex?symbol=" & asset)  
+
 proc totalDebt*(self: Binance): float =
   parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["totalLiabilityOfBtc"].getStr.parseFloat
 
