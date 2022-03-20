@@ -28,8 +28,9 @@ type
     ALT_COIN    = "ALT_COIN"
 
   AccountType* = enum
-    SPOT_ACCOUNT = "SPOT"
-    MARGIN_ACCOUNT = "MARGIN"
+    SPOT_ACCOUNT     = "SPOT"
+    MARGIN_ACCOUNT   = "MARGIN"
+    ISOLATED_ACCOUNT = "ISOLATED"
 
   FilterRule = enum
     PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
@@ -239,10 +240,10 @@ template signQueryString(self: Binance; endpoint: static[string], sapi: bool = f
 #GET /{s}api/v3/account
 #Get the current account information
 proc accountData*(self: Binance, accountType: AccountType = SPOT_ACCOUNT): string =
-  if accountType == SPOT_ACCOUNT: 
-    self.signQueryString"account" 
-  else: 
-    self.signQueryString("margin/account", sapi = true)
+  case accountType:
+  of SPOT_ACCOUNT:  self.signQueryString"account"
+  of MARGIN_ACCOUNT: self.signQueryString("margin/account", sapi = true)
+  else: self.signQueryString("margin/isolated/account", sapi = true)
 
 
 #GET /api/v3/avgPrice
