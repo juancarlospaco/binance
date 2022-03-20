@@ -3,14 +3,16 @@ import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables
 type
 
   Balances = object
-    spot: Table[string, tuple[free, locked: float]]
-    margin: Table[string, tuple[free, locked, interest, netAsset, borrowed: float]]
+    spot*: Table[string, tuple[free, locked: float]]
+    margin*: Table[string, tuple[free, locked, interest, netAsset, borrowed: float]]
+        
 
   Binance* = object  ## Binance API Client.
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
     recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
     client: HttpClient
     balances: Balances
+    marginAsset*: string 
     exchangeData: string
     prechecks*: bool
 
@@ -747,7 +749,8 @@ proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
 
   if current_amount * 0.50 > min_amount:
     current_amount *= 0.50
-    result = (baseAsset, quoteAsset, priceToBuy, current_amount / priceToBuy, current_amount, PREPARED)
+    var quantity = if (current_amount / priceToBuy).formatFloat(ffDecimal, 4) == "0.0000": 0.0001 else: current_amount / priceToBuy
+    result = (baseAsset, quoteAsset, priceToBuy, quantity, current_amount, PREPARED)
   else:
     result = (baseAsset, quoteAsset, priceToBuy, current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)
 
@@ -875,17 +878,20 @@ proc enableFastWithdraw*(self: Binance): string =
 proc marginLevel*(self: Binance): float = 
   parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["marginLevel"].getStr.parseFloat
 
-proc priceIndex*(self: Binance, asset: static[string]): string =
-  result = static(binanceAPIUrl & "/sapi/v1/margin/priceIndex?symbol=" & asset)  
+proc priceIndex*(self: Binance): string =
+  result = binanceAPIUrl & "/sapi/v1/margin/priceIndex?symbol=" & self.marginAsset
 
 proc totalDebt*(self: Binance): float =
-  parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["totalLiabilityOfBtc"].getStr.parseFloat
+  var 
+    debt  = parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["totalLiabilityOfBtc"].getStr.parseFloat
+    price = parseJson(self.request(self.priceIndex))["price"].getStr.parseFloat
+  price * debt
 
 proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
   assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
   assert amount > 0, "Amount must be greater than 0"
-#  if tipe == MARGIN_CROSS_TO_SPOT: 
-#   doAssert amount > self.totalDebt, "Amount must be 2 times greater than total debt"
+  if tipe == MARGIN_CROSS_TO_SPOT: 
+   doAssert amount > self.totalDebt, "Amount must be 2 times greater than total debt"
 
   result.add "asset="
   result.add asset
