@@ -5,7 +5,7 @@ type
   Balances = object
     spot*: Table[string, tuple[free, locked: float]]
     margin*: Table[string, tuple[free, locked, interest, netAsset, borrowed: float]]
-        
+    isolated*: Table[string, seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]]    
 
   Binance* = object  ## Binance API Client.
     apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
@@ -257,23 +257,35 @@ proc avgPrice*(self: Binance, symbol: string): string =
 proc updateUserWallet(self: var Binance, accountType: AccountType = SPOT_ACCOUNT) =
   let wallet = parseJson(self.getContent(self.accountData(accountType)))
   var key: string
-  if accountType == SPOT_ACCOUNT:
+  case accountType:
+  of SPOT_ACCOUNT:
     self.balances.spot = initTable[string, tuple[free, locked: float]]()
     key = "balances"
-  else:
+  of MARGIN_ACCOUNT:
     self.balances.margin = initTable[string, tuple[free, locked, interest, netAsset, borrowed: float]]()
     key = "userAssets"
+  else:
+    self.balances.isolated = initTable[string, seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]]()
+    key = "assets"
 
   let wallet_data = wallet[key]
   for asset in wallet_data:
-    # Hide 0 balances
-    if asset["free"].getStr.parseFloat != 0.0:
-      if accountType == SPOT_ACCOUNT:
-        self.balances.spot[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
-      else:
-        self.balances.margin[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat, asset["interest"].getStr.parseFloat, asset["netAsset"].getStr.parseFloat, asset["borrowed"].getStr.parseFloat)
-        
+    # Hide 0 balances   
+    if asset{"free"}.getStr != "":
+      if asset{"free"}.getStr.parseFloat != 0.0:
+        case accountType:
+        of SPOT_ACCOUNT:
+          self.balances.spot[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
+        else:
+          self.balances.margin[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat, asset["interest"].getStr.parseFloat, asset["netAsset"].getStr.parseFloat, asset["borrowed"].getStr.parseFloat)
+    else:
+      var data:seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]
+      for a in ["baseAsset", "quoteAsset"]:
+        var item = asset[a]
+        data.add (item["asset"].getStr, item["free"].getStr.parseFloat, item["locked"].getStr.parseFloat, item["interest"].getStr.parseFloat, item["netAsset"].getStr.parseFloat, item["borrowed"].getStr.parseFloat)
+      self.balances.isolated[asset["symbol"].getStr] = data
 
+      
 proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool = false): string =
   ## Exchange information, info about Binance.
   if not fromMemory:
@@ -310,6 +322,7 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   # user wallet is cached in memory at runtime
   result.updateUserWallet
   result.updateUserWallet(MARGIN_ACCOUNT)
+  result.updateUserWallet(ISOLATED_ACCOUNT)
   # retrieves exchange info for trading uses
   result.exchangeData = result.getContent(result.exchangeInfo())
 
