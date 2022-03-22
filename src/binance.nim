@@ -917,6 +917,20 @@ proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer)
   result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
   self.signQueryString("margin/transfer", sapi = true)
 
+proc borrow*(self: Binance, asset: string, amount: float, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+  result.add "&amount="
+  result.add $amount
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/loan", sapi = true)
+
+
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
   let preparedEndpoint: string = client.ping()
