@@ -228,7 +228,7 @@ template getContent*(self: Binance, url: string): string = self.client.getConten
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
-template signQueryString(self: Binance; endpoint: static[string], sapi: bool = false) =
+template signQueryString(self: Binance; endpoint: string, sapi: bool = false) =
   ## Sign the query string for Binance API, reusing the same string.
   result.add if len(result) > 0: "&recvWindow=" else: "recvWindow="
   result.addInt self.recvWindow
@@ -237,7 +237,7 @@ template signQueryString(self: Binance; endpoint: static[string], sapi: bool = f
   let signature: string = sha256.hmac(self.apiSecret, result)
   result.add "&signature="
   result.add signature
-  result = static(binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?') & result
+  result = binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?' & result
 
 #GET /{s}api/v3/account
 #Get the current account information
@@ -924,6 +924,8 @@ proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer)
     result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
   else:
     url = "margin/isolated/transfer"  
+    result.add "&symbol="
+    result.add self.marginAsset
     result.add "&transFrom="
     result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "SPOT" else: "ISOLATED_MARGIN"
     result.add "&transTo="
