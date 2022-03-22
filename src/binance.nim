@@ -574,8 +574,6 @@ proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOr
 #Send in a new order.
 proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
   self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
-  echo quantity.formatFloat(ffDecimal, 4)
-
   result = "symbol="
   result.add symbol
   result.add "&side="
@@ -583,7 +581,7 @@ proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, sym
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
+  result.add quantity.formatFloat(ffDecimal, 8)
 
   if tipe == ORDER_TYPE_LIMIT:
     result.add "&timeInForce="
@@ -602,13 +600,13 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
+  result.add quantity.formatFloat(ffDecimal, 8)
   result.add "&price="
   result.add price.formatFloat(ffDecimal, 2)
   self.signQueryString"order"
 
 
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float; accountType: AccountType = SPOT_ACCOUNT): string =
   result = "symbol="
   result.add symbol
   result.add "&side="
@@ -616,8 +614,12 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
-  self.signQueryString"order"
+  result.add quantity.formatFloat(ffDecimal, 8)
+  result.add "&isIsolated="
+  result.add if accountType == ISOLATED_ACCOUNT: "TRUE" else: "FALSE"
+  case accountType:
+  of SPOT_ACCOUNT: self.signQueryString"order"
+  of MARGIN_ACCOUNT, ISOLATED_ACCOUNT: self.signQueryString("margin/order", sapi = true)
 
 
 #POST /api/v3/order/test
