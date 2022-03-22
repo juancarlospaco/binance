@@ -135,6 +135,7 @@ type
     SPOT_TO_USDT_FUTURE         = "MAIN_UMFUTURE"
     SPOT_TO_COIN_FUTURE         = "MAIN_CMFUTURE"
     SPOT_TO_MARGIN_CROSS        = "MAIN_MARGIN"
+    SPOT_TO_MARGIN_ISOLATED     = "SPOT_TO_MARGIN_ISOLATED"
     SPOT_TO_MINING              = "MAIN_MINING"
     FIAT_TO_SPOT                = "C2C_MAIN"
     FIAT_TO_USDT_FUTURE         = "C2C_UMFUTURE"
@@ -144,6 +145,7 @@ type
     USDT_FUTURE_TO_MARGIN_CROSS = "UMFUTURE_MARGIN"
     COIN_FUTURE_TO_SPOT         = "CMFUTURE_MAIN"
     MARGIN_CROSS_TO_SPOT        = "MARGIN_MAIN"
+    MARGIN_ISOLATED_TO_SPOT     = "MARGIN_ISOLATED_TO_SPOT"
     MARGIN_CROSS_TO_USDT_FUTURE = "MARGIN_UMFUTURE"
     MINING_TO_SPOT              = "MINING_MAIN"
     MINING_TO_USDT_FUTURE       = "MINING_UMFUTURE"
@@ -904,18 +906,30 @@ proc totalDebt*(self: Binance): float =
   price * debt
 
 proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
-  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
+  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT, SPOT_TO_MARGIN_ISOLATED, MARGIN_ISOLATED_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
   assert amount > 0, "Amount must be greater than 0"
   if tipe == MARGIN_CROSS_TO_SPOT: 
    doAssert amount > self.totalDebt, "Amount must be 2 times greater than total debt"
+
+  var url: string
 
   result.add "asset="
   result.add asset
   result.add "&amount="
   result.add $amount
-  result.add "&type="
-  result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
-  self.signQueryString("margin/transfer", sapi = true)
+
+  if tipe in { SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT }:
+    url = "margin/transfer"
+    result.add "&type="
+    result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
+  else:
+    url = "margin/isolated/transfer"  
+    result.add "&transFrom="
+    result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "SPOT" else: "ISOLATED_MARGIN"
+    result.add "&transTo="
+    result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "ISOLATED_MARGIN" else: "SPOT"
+
+  self.signQueryString(url, sapi = true)
 
 proc borrow*(self: Binance, asset: string, amount: float, accountType: AccountType): string =
   result.add "asset="
@@ -942,6 +956,29 @@ proc repay*(self: Binance, asset: string, amount: float, accountType: AccountTyp
     result.add self.marginAsset
 
   self.signQueryString("margin/repay", sapi = true)
+
+proc maxBorrowable*(self: Binance, asset: string, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/maxBorrowable", sapi = true)
+
+
+proc maxTransferable*(self: Binance, asset: string, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/maxTransferable", sapi = true)
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
