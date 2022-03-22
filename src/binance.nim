@@ -134,6 +134,7 @@ type
     SPOT_TO_USDT_FUTURE         = "MAIN_UMFUTURE"
     SPOT_TO_COIN_FUTURE         = "MAIN_CMFUTURE"
     SPOT_TO_MARGIN_CROSS        = "MAIN_MARGIN"
+    SPOT_TO_MARGIN_ISOLATED     = "SPOT_TO_MARGIN_ISOLATED"
     SPOT_TO_MINING              = "MAIN_MINING"
     FIAT_TO_SPOT                = "C2C_MAIN"
     FIAT_TO_USDT_FUTURE         = "C2C_UMFUTURE"
@@ -143,6 +144,7 @@ type
     USDT_FUTURE_TO_MARGIN_CROSS = "UMFUTURE_MARGIN"
     COIN_FUTURE_TO_SPOT         = "CMFUTURE_MAIN"
     MARGIN_CROSS_TO_SPOT        = "MARGIN_MAIN"
+    MARGIN_ISOLATED_TO_SPOT     = "MARGIN_ISOLATED_TO_SPOT"
     MARGIN_CROSS_TO_USDT_FUTURE = "MARGIN_UMFUTURE"
     MINING_TO_SPOT              = "MINING_MAIN"
     MINING_TO_USDT_FUTURE       = "MINING_UMFUTURE"
@@ -226,7 +228,7 @@ template getContent*(self: Binance, url: string): string = self.client.getConten
 proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
 
 
-template signQueryString(self: Binance; endpoint: static[string], sapi: bool = false) =
+template signQueryString(self: Binance; endpoint: string, sapi: bool = false) =
   ## Sign the query string for Binance API, reusing the same string.
   result.add if len(result) > 0: "&recvWindow=" else: "recvWindow="
   result.addInt self.recvWindow
@@ -235,7 +237,7 @@ template signQueryString(self: Binance; endpoint: static[string], sapi: bool = f
   let signature: string = sha256.hmac(self.apiSecret, result)
   result.add "&signature="
   result.add signature
-  result = static(binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?') & result
+  result = binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?' & result
 
 #GET /{s}api/v3/account
 #Get the current account information
@@ -574,8 +576,6 @@ proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOr
 #Send in a new order.
 proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
   self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
-  echo quantity.formatFloat(ffDecimal, 4)
-
   result = "symbol="
   result.add symbol
   result.add "&side="
@@ -583,7 +583,7 @@ proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, sym
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
+  result.add quantity.formatFloat(ffDecimal, 8)
 
   if tipe == ORDER_TYPE_LIMIT:
     result.add "&timeInForce="
@@ -602,13 +602,13 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
+  result.add quantity.formatFloat(ffDecimal, 8)
   result.add "&price="
   result.add price.formatFloat(ffDecimal, 2)
   self.signQueryString"order"
 
 
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float; accountType: AccountType = SPOT_ACCOUNT): string =
   result = "symbol="
   result.add symbol
   result.add "&side="
@@ -616,8 +616,12 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
-  self.signQueryString"order"
+  result.add quantity.formatFloat(ffDecimal, 8)
+  result.add "&isIsolated="
+  result.add if accountType == ISOLATED_ACCOUNT: "TRUE" else: "FALSE"
+  case accountType:
+  of SPOT_ACCOUNT: self.signQueryString"order"
+  of MARGIN_ACCOUNT, ISOLATED_ACCOUNT: self.signQueryString("margin/order", sapi = true)
 
 
 #POST /api/v3/order/test
@@ -912,18 +916,82 @@ proc totalDebt*(self: Binance): float =
 
 
 proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
-  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
+  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT, SPOT_TO_MARGIN_ISOLATED, MARGIN_ISOLATED_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
   assert amount > 0, "Amount must be greater than 0"
   if tipe == MARGIN_CROSS_TO_SPOT:
     doAssert amount > self.totalDebt, "Amount must be 2 times greater than total debt"
+
+  var url: string
 
   result.add "asset="
   result.add asset
   result.add "&amount="
   result.add $amount
-  result.add "&type="
-  result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
-  self.signQueryString("margin/transfer", sapi = true)
+
+  if tipe in { SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT }:
+    url = "margin/transfer"
+    result.add "&type="
+    result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
+  else:
+    url = "margin/isolated/transfer"  
+    result.add "&symbol="
+    result.add self.marginAsset
+    result.add "&transFrom="
+    result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "SPOT" else: "ISOLATED_MARGIN"
+    result.add "&transTo="
+    result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "ISOLATED_MARGIN" else: "SPOT"
+
+  self.signQueryString(url, sapi = true)
+
+proc borrow*(self: Binance, asset: string, amount: float, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+  result.add "&amount="
+  result.add $amount
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/loan", sapi = true)
+
+proc repay*(self: Binance, asset: string, amount: float, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+  result.add "&amount="
+  result.add $amount
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/repay", sapi = true)
+
+proc maxBorrowable*(self: Binance, asset: string, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/maxBorrowable", sapi = true)
+
+
+proc maxTransferable*(self: Binance, asset: string, accountType: AccountType): string =
+  result.add "asset="
+  result.add asset
+
+  if accountType == ISOLATED_ACCOUNT:
+    result.add "&isIsolated=TRUE"
+    result.add "&symbol="
+    result.add self.marginAsset
+
+  self.signQueryString("margin/maxTransferable", sapi = true)
+
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
