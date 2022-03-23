@@ -69,3 +69,4 @@ TradingBot example: https://github.com/juancarlospaco/binance/blob/nim/examples/
 :star: [@Nacho512](https://github.com/Nacho512 '2022-02-20')
 :star: [@hannylicious](https://github.com/hannylicious '2022-03-02')
 :star: [@Walter-Santillan](https://github.com/Walter-Santillan '2022-03-21')	
+:star: [@kamilchm](https://github.com/kamilchm '2022-03-23')	
