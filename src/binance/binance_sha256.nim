@@ -1,6 +1,5 @@
 from std/strutils import toLowerAscii
 
-
 type
   HexFlags {.pure.} = enum
     LowerCase,  ## Produce lowercase hexadecimal characters
@@ -61,33 +60,15 @@ elif defined(vcc):
   proc swapBytesBuiltin(a: uint32): uint32 {.importc: "_byteswap_ulong",  cdecl, header: "<intrin.h>".}
   proc swapBytesBuiltin(a: uint64): uint64 {.importc: "_byteswap_uint64", cdecl, header: "<intrin.h>".}
 
-
-template copyMem[A, B](dst: var openArray[A], dsto: int, src: openArray[B], srco: int, length: int) =
-  copyMem(addr dst[dsto], unsafeAddr src[srco], length * sizeof(B))
-
-template ROR(x: uint32, n: int): uint32 =
-  (x shr uint32(n and 0x1F)) or (x shl uint32(32 - (n and 0x1F)))
-
-template ROR(x: uint64, n: int): uint64 =
-  (x shr uint64(n and 0x3F)) or (x shl uint64(64 - (n and 0x3F)))
-
-template SIG0(x): uint32 =
-  ROR(x, 7) xor ROR(x, 18) xor (x shr 3)
-
-template SIG1(x): uint32 =
-  ROR(x, 17) xor ROR(x, 19) xor (x shr 10)
-
-template TAU0(x: uint32): uint32 =
-  (ROR(x, 2) xor ROR(x, 13) xor ROR(x, 22))
-
-template TAU1(x: uint32): uint32 =
-  (ROR(x, 6) xor ROR(x, 11) xor ROR(x, 25))
-
-template CH0(x, y, z): uint32 =
-  ((x) and (y)) xor (not(x) and (z))
-
-template MAJ0(x, y, z): uint32 =
-  ((x) and (y)) xor ((x) and (z)) xor ((y) and (z))
+template copyMem[A, B](dst: var openArray[A], dsto: int, src: openArray[B], srco: int, length: int) = copyMem(addr dst[dsto], unsafeAddr src[srco], length * sizeof(B))
+template ROR(x: uint32, n: int): uint32 = (x shr uint32(n and 0x1F)) or (x shl uint32(32 - (n and 0x1F)))
+template ROR(x: uint64, n: int): uint64 = (x shr uint64(n and 0x3F)) or (x shl uint64(64 - (n and 0x3F)))
+template SIG0(x): uint32 = ROR(x, 7) xor ROR(x, 18) xor (x shr 3)
+template SIG1(x): uint32 = ROR(x, 17) xor ROR(x, 19) xor (x shr 10)
+template TAU0(x: uint32): uint32 = (ROR(x, 2) xor ROR(x, 13) xor ROR(x, 22))
+template TAU1(x: uint32): uint32 = (ROR(x, 6) xor ROR(x, 11) xor ROR(x, 25))
+template CH0(x, y, z): uint32 = ((x) and (y)) xor (not(x) and (z))
+template MAJ0(x, y, z): uint32 = ((x) and (y)) xor ((x) and (z)) xor ((y) and (z))
 
 template ROUND256(a, b, c, d, e, f, g, h, z) =
   t0 = h + TAU1(e) + CH0(e, f, g) + K0[z] + W[z]
@@ -105,8 +86,7 @@ template beLoad32[T: byte|char](src: openArray[T], srco: int): uint32 =
   var p = cast[ptr uint32](unsafeAddr src[srco])[]
   leSwap32(p)
 
-template beStore32*(dst: var openArray[byte], so: int, v: uint32) =
-  cast[ptr uint32](addr dst[so])[] = leSwap32(v)
+template beStore32*(dst: var openArray[byte], so: int, v: uint32) = cast[ptr uint32](addr dst[so])[] = leSwap32(v)
 
 proc sha256Transform(state: var array[8, uint32], data: openArray[byte]) =
   var
@@ -122,8 +102,7 @@ proc sha256Transform(state: var array[8, uint32], data: openArray[byte]) =
   W[12] = beLoad32(data, 48); W[13] = beLoad32(data, 52)
   W[14] = beLoad32(data, 56); W[15] = beLoad32(data, 60)
 
-  for i in 16 ..< 64:
-    W[i] = SIG1(W[i - 2]) + W[i - 7] + SIG0(W[i - 15]) + W[i - 16]
+  for i in 16 ..< 64: W[i] = SIG1(W[i - 2]) + W[i - 7] + SIG0(W[i - 15]) + W[i - 16]
 
   var s0 = state[0]
   var s1 = state[1]
@@ -256,8 +235,7 @@ proc init[M](hmctx: var HMAC, key: openArray[M]) =
   update hmctx.mdctx, hmctx.ipad
   update hmctx.opadctx, hmctx.opad
 
-
-proc finalize256(ctx: var SHA256) {. inline .} =
+proc finalize256(ctx: var SHA256) {.inline.} =
   var j = int(ctx.count[0] and 0x3f'u32)
   ctx.buffer[j] = 0x80'u8
   j += 1
@@ -273,7 +251,7 @@ proc finalize256(ctx: var SHA256) {. inline .} =
   beStore32(ctx.buffer, 60, ctx.count[0])
   sha256Transform(ctx.state, ctx.buffer)
 
-proc finish*(ctx: var SHA256, data: var openArray[byte]):uint {.inline .} =
+proc finish*(ctx: var SHA256, data: var openArray[byte]):uint {.inline.} =
   finalize256(ctx)
   beStore32(data, 0, ctx.state[0])
   beStore32(data, 4, ctx.state[1])
@@ -284,7 +262,6 @@ proc finish*(ctx: var SHA256, data: var openArray[byte]):uint {.inline .} =
   beStore32(data, 24, ctx.state[6])
   beStore32(data, 28, ctx.state[7])
   result = 32
-
 
 proc finish[T: bchar](hmctx: var HMAC, data: var openArray[T]) {.inline.} =
   var buffer: array[32, byte]
@@ -302,19 +279,14 @@ proc burnMem(p: pointer, size: Natural) =
       sp = cast[ptr byte](cast[uint](sp) + 1)
       dec(c)
 
-proc burnMem[T](a: var T) {.inline.} =
-  burnMem(addr a, sizeof(T))
-
-
-proc clear(hmctx: var HMAC) =
-  burnMem(hmctx)
+proc burnMem[T](a: var T) {.inline.} = burnMem(addr a, sizeof(T))
+proc clear(hmctx: var HMAC) = burnMem(hmctx)
 
 proc hexDigit(x: int, lowercase: bool = false): char =
   var off = uint32(0x41 - 0x3A)
   if lowercase:
     off += 0x20
   char(0x30'u32 + uint32(x) + (off and not((uint32(x) - 10) shr 8)))
-
 
 proc bytesToHex(src: openArray[byte], dst: var openArray[char], flags: set[HexFlags]): int =
   if len(dst) == 0:
@@ -345,7 +317,6 @@ proc bytesToHex(src: openArray[byte], dst: var openArray[char], flags: set[HexFl
       dst[k + 0] = hexDigit(x shr 4, lowercase)
       inc(k)
     k
-
 
 proc hmac*[A: bchar, B: bchar](HashType: typedesc, key: openArray[A], data: openArray[B]): string =
   var ctx: HMAC
