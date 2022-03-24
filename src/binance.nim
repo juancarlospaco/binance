@@ -801,7 +801,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
       if (0,"") != d:
         marketDetails[coin] = data
 
-  #find a price and a minimal amount required for trade
+  # find a price and a minimal amount required for trade
   for assets in pairs(marketDetails):
     (coin, market) = assets
 
@@ -815,7 +815,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
             checked_assets.add asset["symbol"].getStr
             symbolToBuy = asset["quoteAsset"].getStr
             let min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
-            let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
+            # let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
 
             if virtual_current_amount < 0:
               current_amount = self.getStableCoinsInWallet()[symbolToBuy]
@@ -933,7 +933,7 @@ proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer)
     result.add "&type="
     result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
   else:
-    url = "margin/isolated/transfer"  
+    url = "margin/isolated/transfer"
     result.add "&symbol="
     result.add self.marginAsset
     result.add "&transFrom="
@@ -991,7 +991,6 @@ proc maxTransferable*(self: Binance, asset: string, accountType: AccountType): s
     result.add self.marginAsset
 
   self.signQueryString("margin/maxTransferable", sapi = true)
-
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
