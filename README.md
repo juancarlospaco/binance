@@ -13,15 +13,15 @@
 
 # Requisites
 
-- Valid API Key and API Secret, with trading permissions, get it for free at https://www.binance.com/en/my/settings/api-management
+- Valid API Key and API Secret, with all permissions, get it for free at https://www.binance.com/en/my/settings/api-management
 
 ![](api_key_web.png)
 
 - Device Date and Time must be configured, up to the seconds precision, Binance is strict about timestamps,
   use https://github.com/juancarlospaco/binance/blob/nim/examples/binanceVslocalTime.nim to debug time diff.
 
-- Some stablecoin in Binance Spot wallet to trade with, >= 10 USD in USDT at least.
-- Some BNB coins in Binance Spot wallet for commisions, >= 1 USD in BNB at least.
+- Some stablecoin in Binance Spot wallet to trade with, > 10 USD in USDT at least.
+- Some BNB coins in Binance Spot wallet for commisions, > 1 USD in BNB at least.
 
 
 # Examples
@@ -68,5 +68,5 @@ TradingBot example: https://github.com/juancarlospaco/binance/blob/nim/examples/
 :star: [@nickolaz](https://github.com/nickolaz '2022-02-18')
 :star: [@Nacho512](https://github.com/Nacho512 '2022-02-20')
 :star: [@hannylicious](https://github.com/hannylicious '2022-03-02')
-:star: [@Walter-Santillan](https://github.com/Walter-Santillan '2022-03-21')	
-:star: [@kamilchm](https://github.com/kamilchm '2022-03-23')	
+:star: [@Walter-Santillan](https://github.com/Walter-Santillan '2022-03-21')
+:star: [@kamilchm](https://github.com/kamilchm '2022-03-23')
