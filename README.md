@@ -1,6 +1,6 @@
 # Binance
 
-![](binance.jpg)
+![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/binance.jpg)
 
 ![](https://github.com/juancarlospaco/binance/actions/workflows/build.yml/badge.svg)
 ![](https://img.shields.io/github/languages/top/juancarlospaco/binance?style=for-the-badge)
@@ -15,7 +15,7 @@
 
 - Valid API Key and API Secret, with all permissions, get it for free at https://www.binance.com/en/my/settings/api-management
 
-![](api_key_web.png)
+![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/api_key_web.png)
 
 - Device Date and Time must be configured, up to the seconds precision, Binance is strict about timestamps,
   use https://github.com/juancarlospaco/binance/blob/nim/examples/binanceVslocalTime.nim to debug time diff.
@@ -58,6 +58,91 @@ TradingBot example: https://github.com/juancarlospaco/binance/blob/nim/examples/
 
 - See also https://github.com/juancarlospaco/tradingview#tradingview
 - See also https://github.com/juancarlospaco/cloudbet#cloudbet
+
+
+# 💰➡️🍕
+
+<details>
+<summary title="Send Bitcoin"><kbd> Bitcoin BTC </kbd></summary>
+
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**BTC Bitcoin Network**
+```
+1Pnf45MgGgY32X4KDNJbutnpx96E4FxqVi
+```
+</details>
+
+<details>
+<summary><kbd> Ethereum ETH </kbd> <kbd> Dai DAI </kbd> <kbd> Uniswap UNI </kbd> <kbd> Axie Infinity AXS </kbd> <kbd> Smooth Love Potion SLP </kbd> </summary>
+
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**ERC20 Ethereum Network**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+</details>
+<details>
+<summary title="Send Tether"><kbd> Tether USDT </kbd></summary>
+
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**ERC20 Ethereum Network**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**TRC20 Tron Network**
+```
+TWGft53WgWvH2mnqR8ZUXq1GD8M4gZ4Yfu
+```
+</details>
+<details>
+<summary title="Send Solana"><kbd> Solana SOL </kbd></summary>
+
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**SOL Solana Network**
+```
+FKaPSd8kTUpH7Q76d77toy1jjPGpZSxR4xbhQHyCMSGq
+```
+</details>
+<details>
+<summary title="Send Cardano"><kbd> Cardano ADA </kbd></summary>
+
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**ADA Cardano Network**
+```
+DdzFFzCqrht9Y1r4Yx7ouqG9yJNWeXFt69xavLdaeXdu4cQi2yXgNWagzh52o9k9YRh3ussHnBnDrg7v7W2hSXWXfBhbo2ooUKRFMieM
+```
+</details>
+<details>
+<summary title="Send Sandbox"><kbd> Sandbox SAND </kbd> <kbd> Decentraland MANA </kbd></summary>
+
+**ERC20 Ethereum Network**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+</details>
+<details>
+<summary title="Send Algorand"><kbd> Algorand ALGO </kbd></summary>
+
+**ALGO Algorand Network**
+```
+WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
+```
+</details>
 
 
 # Stars
