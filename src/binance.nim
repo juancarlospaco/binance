@@ -617,8 +617,9 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add $tipe
   result.add "&quantity="
   result.add quantity.formatFloat(ffDecimal, 8)
-  result.add "&isIsolated="
-  result.add if accountType == ISOLATED_ACCOUNT: "TRUE" else: "FALSE"
+  if accountType != SPOT_ACCOUNT:
+    result.add "&isIsolated="
+    result.add if accountType == ISOLATED_ACCOUNT: "TRUE" else: "FALSE"
   case accountType:
   of SPOT_ACCOUNT: self.signQueryString"order"
   of MARGIN_ACCOUNT, ISOLATED_ACCOUNT: self.signQueryString("margin/order", sapi = true)
