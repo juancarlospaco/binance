@@ -40,6 +40,8 @@ echo client.request(preparedEndpoint, HttpPost)
 
 TradingBot example: https://github.com/juancarlospaco/binance/blob/nim/examples/newcoin.nim
 
+Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/examples/giftcardbot.nim
+
 
 # Documentation
 
