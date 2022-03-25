@@ -1002,7 +1002,7 @@ proc createCode*(self: Binance; token: string; quantity: float): string =
   result = "token="
   result.add token
   result.add "&amount=" # amount instead of quantity.
-  result.add $quantity
+  result.add quantity.formatFloat(ffDecimal, 8)
   self.signQueryString("giftcard/createCode", sapi = true)
 
 
