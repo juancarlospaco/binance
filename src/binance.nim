@@ -1003,21 +1003,21 @@ proc createCode*(self: Binance; code: string; quantity: float): string =
   result.add code
   result.add "&amount=" # amount instead of quantity.
   result.add $quantity
-  self.signQueryString("v1/giftcard/createCode", sapi = true)
+  self.signQueryString("giftcard/createCode", sapi = true)
 
 
 proc redeemCode*(self: Binance; code: string): string =
   ## If you enter the wrong code 5 times within 24 hours, you will no longer be able to redeem any Binance Code for a day.
   result = "code=" # token instead of symbol.
   result.add code
-  self.signQueryString("v1/giftcard/redeemCode", sapi = true)
+  self.signQueryString("giftcard/redeemCode", sapi = true)
 
 
 proc verify*(self: Binance; referenceNo: string): string =
   ## `referenceNo` is the number that `createCode` returns when successful, this is NOT the PIN code.
   result = "referenceNo="
   result.add referenceNo
-  self.signQueryString("v1/giftcard/verify", sapi = true)
+  self.signQueryString("giftcard/verify", sapi = true)
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
