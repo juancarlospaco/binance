@@ -997,10 +997,10 @@ proc maxTransferable*(self: Binance, asset: string, accountType: AccountType): s
 # Gift Cards endpoints.
 
 
-proc createCode*(self: Binance; code: string; quantity: float): string =
+proc createCode*(self: Binance; token: string; quantity: float): string =
   ## Create a new Gift Card via API.
-  result = "code="
-  result.add code
+  result = "token="
+  result.add token
   result.add "&amount=" # amount instead of quantity.
   result.add $quantity
   self.signQueryString("giftcard/createCode", sapi = true)
