@@ -583,7 +583,7 @@ proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, sym
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 8)
+  result.add quantity.formatFloat(ffDecimal, 6)
 
   if tipe == ORDER_TYPE_LIMIT:
     result.add "&timeInForce="
@@ -602,7 +602,7 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 8)
+  result.add quantity.formatFloat(ffDecimal, 6)
   result.add "&price="
   result.add price.formatFloat(ffDecimal, 2)
   self.signQueryString"order"
@@ -616,7 +616,7 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   result.add "&type="
   result.add $tipe
   result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 8)
+  result.add quantity.formatFloat(ffDecimal, 6)
   if accountType != SPOT_ACCOUNT:
     result.add "&isIsolated="
     result.add if accountType == ISOLATED_ACCOUNT: "TRUE" else: "FALSE"
