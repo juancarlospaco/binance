@@ -318,8 +318,9 @@ proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool =
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
-  var client = newHttpClient()
+  var client = newHttpClient(timeout = 99_999)
   client.headers.add "X-MBX-APIKEY", apiKey
+  client.headers.add "DNT", "1"
   result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
   # user wallet is cached in memory at runtime
   result.updateUserWallet
