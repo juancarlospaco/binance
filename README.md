@@ -157,3 +157,4 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@hannylicious](https://github.com/hannylicious '2022-03-02')
 :star: [@Walter-Santillan](https://github.com/Walter-Santillan '2022-03-21')
 :star: [@kamilchm](https://github.com/kamilchm '2022-03-23')
+:star: [@Parzivalcen](https://github.com/Parzivalcen '2022-04-06')	
