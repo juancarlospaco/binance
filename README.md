@@ -13,8 +13,8 @@
 
 # Requisites
 
+- Access to SMS and/or email for 2 Factor Authentication, for initial setup.
 - Valid API Key and API Secret, with all permissions, get it for free at https://www.binance.com/en/my/settings/api-management
-  (This may require SMS/Email 2 factor authentication).
 
 ![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/api_key_web.png)
 
