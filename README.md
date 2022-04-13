@@ -19,9 +19,11 @@
 
 - Device Date and Time must be configured, up to the seconds precision, Binance is strict about timestamps,
   use https://github.com/juancarlospaco/binance/blob/nim/examples/binanceVslocalTime.nim to debug time diff.
+  In Windows, if you get `400 Bad Request`, check the time, Windows like to change the time without warning after updates,
+  set the correct time, up to the seconds precision, and disable Windows auto-update of time from the Windows settings.
 
-- Some stablecoin in Binance Spot wallet to trade with, > 10 USD in USDT at least.
-- Some BNB coins in Binance Spot wallet for commisions, > 1 USD in BNB at least.
+- Some stablecoin in Binance Spot wallet to trade with, >10 USD in USDT at least, >100 USD in USDT recommended.
+- Some BNB coins in Binance Spot wallet for commisions, >1 USD in BNB at least, >10 USD in BNB recommended.
 
 
 # Examples
