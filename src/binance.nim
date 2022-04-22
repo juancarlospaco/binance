@@ -225,7 +225,16 @@ converter date_to_milliseconds(d: Duration): int64 =
 
 template close*(self: Binance) = self.client.close()
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
-proc request*(self: Binance, endpoint: string, httpMethod: HttpMethod = HttpGet): string {.inline.} = self.client.request(url = endpoint, httpMethod = httpMethod).body
+
+
+proc request*(self: Binance; endpoint: string; httpMethod: HttpMethod = HttpGet): string =
+  ## Httpclient request but with a Retry.
+  for _ in 0 .. 9:
+    try:
+      result = self.client.request(url = endpoint, httpMethod = httpMethod).body
+      break
+    except:
+      continue
 
 
 template signQueryString(self: Binance; endpoint: string, sapi: bool = false) =
@@ -322,11 +331,11 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   client.headers.add "X-MBX-APIKEY", apiKey
   client.headers.add "DNT", "1"
   result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
-  # user wallet is cached in memory at runtime
+  # user wallet is cached in memory at runtime.
   result.updateUserWallet
   result.updateUserWallet(MARGIN_ACCOUNT)
   result.updateUserWallet(ISOLATED_ACCOUNT)
-  # retrieves exchange info for trading uses
+  # retrieves exchange info for trading uses.
   result.exchangeData = result.getContent(result.exchangeInfo())
 
 
