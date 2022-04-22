@@ -13,15 +13,18 @@
 
 # Requisites
 
+- Access to SMS and/or email for 2 Factor Authentication, for initial setup.
 - Valid API Key and API Secret, with all permissions, get it for free at https://www.binance.com/en/my/settings/api-management
 
 ![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/api_key_web.png)
 
 - Device Date and Time must be configured, up to the seconds precision, Binance is strict about timestamps,
   use https://github.com/juancarlospaco/binance/blob/nim/examples/binanceVslocalTime.nim to debug time diff.
+  In Windows, if you get `400 Bad Request`, check the time, Windows like to change the time without warning after updates,
+  set the correct time, up to the seconds precision, and disable Windows auto-update of time from the Windows settings.
 
-- Some stablecoin in Binance Spot wallet to trade with, > 10 USD in USDT at least.
-- Some BNB coins in Binance Spot wallet for commisions, > 1 USD in BNB at least.
+- Some stablecoin in Binance Spot wallet to trade with, >10 USD in USDT at least, >100 USD in USDT recommended.
+- Some BNB coins in Binance Spot wallet for commisions, >1 USD in BNB at least, >10 USD in BNB recommended.
 
 
 # Examples
@@ -64,7 +67,7 @@ Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/exampl
 
 # 💰➡️🍕
 
-<details>
+<details> 
 <summary title="Send Bitcoin"><kbd> Bitcoin BTC </kbd></summary>
 
 **BEP20 Binance Smart Chain Network BSC**
@@ -75,10 +78,14 @@ Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/exampl
 ```
 1Pnf45MgGgY32X4KDNJbutnpx96E4FxqVi
 ```
+**Lightning Network**
+```
+juancarlospaco@bitrefill.me
+```  
 </details>
 
-<details>
-<summary><kbd> Ethereum ETH </kbd> <kbd> Dai DAI </kbd> <kbd> Uniswap UNI </kbd> <kbd> Axie Infinity AXS </kbd> <kbd> Smooth Love Potion SLP </kbd> </summary>
+<details> 
+<summary title="Send Ethereum and DAI"><kbd> Ethereum ETH </kbd> <kbd> Dai DAI </kbd> <kbd> Uniswap UNI </kbd> <kbd> Axie Infinity AXS </kbd> <kbd> Smooth Love Potion SLP </kbd> <kbd> Uniswap UNI </kbd> <kbd> USDC </kbd> </summary>
 
 **BEP20 Binance Smart Chain Network BSC**
 ```
@@ -89,7 +96,7 @@ Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/exampl
 0xb78c4cf63274bb22f83481986157d234105ac17e
 ```
 </details>
-<details>
+<details> 
 <summary title="Send Tether"><kbd> Tether USDT </kbd></summary>
 
 **BEP20 Binance Smart Chain Network BSC**
@@ -105,7 +112,29 @@ Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/exampl
 TWGft53WgWvH2mnqR8ZUXq1GD8M4gZ4Yfu
 ```
 </details>
-<details>
+<details> 
+<summary title="Send Terra"><kbd> Terra UST </kbd></summary>
+
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```
+**Terra Network**
+```
+terra1ncjg4a59x2pgvqy9qjyqprlj8lrwshm0wleht5
+```
+- Memo ` 108340023 `
+</details>
+<details> 
+<summary title="Send Luna"><kbd> LUNA </kbd></summary>
+
+**Terra Network**
+```
+terra1ncjg4a59x2pgvqy9qjyqprlj8lrwshm0wleht5
+```
+- Memo ` 108340023 `
+</details>
+<details> 
 <summary title="Send Solana"><kbd> Solana SOL </kbd></summary>
 
 **BEP20 Binance Smart Chain Network BSC**
@@ -117,7 +146,7 @@ TWGft53WgWvH2mnqR8ZUXq1GD8M4gZ4Yfu
 FKaPSd8kTUpH7Q76d77toy1jjPGpZSxR4xbhQHyCMSGq
 ```
 </details>
-<details>
+<details> 
 <summary title="Send Cardano"><kbd> Cardano ADA </kbd></summary>
 
 **BEP20 Binance Smart Chain Network BSC**
@@ -129,7 +158,7 @@ FKaPSd8kTUpH7Q76d77toy1jjPGpZSxR4xbhQHyCMSGq
 DdzFFzCqrht9Y1r4Yx7ouqG9yJNWeXFt69xavLdaeXdu4cQi2yXgNWagzh52o9k9YRh3ussHnBnDrg7v7W2hSXWXfBhbo2ooUKRFMieM
 ```
 </details>
-<details>
+<details> 
 <summary title="Send Sandbox"><kbd> Sandbox SAND </kbd> <kbd> Decentraland MANA </kbd></summary>
 
 **ERC20 Ethereum Network**
@@ -137,13 +166,30 @@ DdzFFzCqrht9Y1r4Yx7ouqG9yJNWeXFt69xavLdaeXdu4cQi2yXgNWagzh52o9k9YRh3ussHnBnDrg7v
 0xb78c4cf63274bb22f83481986157d234105ac17e
 ```
 </details>
-<details>
+<details> 
 <summary title="Send Algorand"><kbd> Algorand ALGO </kbd></summary>
 
 **ALGO Algorand Network**
 ```
 WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 ```
+</details>
+<details> 
+<summary title="Send Polkadot"><kbd> Polkadot DOT </kbd></summary>
+
+**DOT Network**
+```
+13GdxHQbQA1K6i7Ctf781nQkhQhoVhGgUnrjn9EvcJnYWCEd
+```
+**BEP20 Binance Smart Chain Network BSC**
+```
+0xb78c4cf63274bb22f83481986157d234105ac17e
+```  
+</details>
+<details> 
+<summary title="Send via Binance Pay"> Binance </summary>
+  
+[https://pay.binance.com/en/checkout/e92e536210fd4f62b426ea7ee65b49c3](https://pay.binance.com/en/checkout/e92e536210fd4f62b426ea7ee65b49c3 "Send via Binance Pay")
 </details>
 
 
@@ -157,3 +203,4 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@hannylicious](https://github.com/hannylicious '2022-03-02')
 :star: [@Walter-Santillan](https://github.com/Walter-Santillan '2022-03-21')
 :star: [@kamilchm](https://github.com/kamilchm '2022-03-23')
+:star: [@Parzivalcen](https://github.com/Parzivalcen '2022-04-06')	
