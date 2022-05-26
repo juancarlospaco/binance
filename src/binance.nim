@@ -1067,7 +1067,7 @@ proc verify*(self: Binance; referenceNo: string): string =
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
-  import std/httpcore
+  import std/[httpcore, json]
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
   let preparedEndpoint: string = client.ping()
   echo client.request(preparedEndpoint, HttpGet)
