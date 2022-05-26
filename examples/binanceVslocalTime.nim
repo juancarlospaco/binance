@@ -1,5 +1,5 @@
 ## Show time diff between Binance and your PC, Binance is strict about Timestamps this helps debugging.
-import std/[times, os, json], binance
+import std/[times, os, json, httpcore], binance
 
 
 var
@@ -11,7 +11,7 @@ let client = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
 for i in 0 .. 9:
   # localTime = now().utc.toTime.toUnix * 1_000
   localTime = fromUnixFloat(epochTime() * 1_000).toUnix
-  serverTime = parseJson(client.getContent(client.time()))["serverTime"].getBiggestInt
+  serverTime = client.request(client.time(), HttpGet)["serverTime"].getBiggestInt
   diff = serverTime - localTime
   message.add "{\"binance\": "
   message.addInt serverTime
