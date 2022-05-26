@@ -12,8 +12,8 @@ type
   SHA256 = object
     bits: int       # 256
     block_size: int # block-size 64
-    count: array[2, uint32]
-    state: array[8, uint32]
+    count:  array[2, uint32]
+    state:  array[8, uint32]
     buffer: array[64,byte]
 
   sha256* = SHA256
@@ -49,16 +49,7 @@ when defined(gcc) or defined(llvm_gcc) or defined(clang):
   func swapBytesBuiltin(x: uint16): uint16 {.importc: "__builtin_bswap16", nodecl.}
   func swapBytesBuiltin(x: uint32): uint32 {.importc: "__builtin_bswap32", nodecl.}
   func swapBytesBuiltin(x: uint64): uint64 {.importc: "__builtin_bswap64", nodecl.}
-elif defined(icc):
-  func swapBytesBuiltin(x: uint8 ): uint8 = x
-  func swapBytesBuiltin(a: uint16): uint16 {.importc: "_bswap16", nodecl.}
-  func swapBytesBuiltin(a: uint32): uint32 {.importc: "_bswap",   nodec.}
-  func swapBytesBuiltin(a: uint64): uint64 {.importc: "_bswap64", nodecl.}
-elif defined(vcc):
-  func swapBytesBuiltin(x: uint8 ): uint8 = x
-  proc swapBytesBuiltin(a: uint16): uint16 {.importc: "_byteswap_ushort", cdecl, header: "<intrin.h>".}
-  proc swapBytesBuiltin(a: uint32): uint32 {.importc: "_byteswap_ulong",  cdecl, header: "<intrin.h>".}
-  proc swapBytesBuiltin(a: uint64): uint64 {.importc: "_byteswap_uint64", cdecl, header: "<intrin.h>".}
+else: {.fatal: "Requires GCC or Clang or LLVM Compiler.".}
 
 template copyMem[A, B](dst: var openArray[A], dsto: int, src: openArray[B], srco: int, length: int) = copyMem(addr dst[dsto], unsafeAddr src[srco], length * sizeof(B))
 template ROR(x: uint32, n: int): uint32 = (x shr uint32(n and 0x1F)) or (x shl uint32(32 - (n and 0x1F)))
@@ -69,6 +60,8 @@ template TAU0(x: uint32): uint32 = (ROR(x, 2) xor ROR(x, 13) xor ROR(x, 22))
 template TAU1(x: uint32): uint32 = (ROR(x, 6) xor ROR(x, 11) xor ROR(x, 25))
 template CH0(x, y, z): uint32 = ((x) and (y)) xor (not(x) and (z))
 template MAJ0(x, y, z): uint32 = ((x) and (y)) xor ((x) and (z)) xor ((y) and (z))
+template leSwap32(a: uint32): uint32 = (when system.cpuEndian == bigEndian: (a) else: swapBytesBuiltin(a))
+template beStore32*(dst: var openArray[byte], so: int, v: uint32) = cast[ptr uint32](addr dst[so])[] = leSwap32(v)
 
 template ROUND256(a, b, c, d, e, f, g, h, z) =
   t0 = h + TAU1(e) + CH0(e, f, g) + K0[z] + W[z]
@@ -76,31 +69,31 @@ template ROUND256(a, b, c, d, e, f, g, h, z) =
   d = d + t0
   h = t0 + t1
 
-template leSwap32(a: uint32): uint32 =
-  when system.cpuEndian == bigEndian:
-    (a)
-  else:
-    swapBytesBuiltin(a)
-
 template beLoad32[T: byte|char](src: openArray[T], srco: int): uint32 =
   var p = cast[ptr uint32](unsafeAddr src[srco])[]
   leSwap32(p)
-
-template beStore32*(dst: var openArray[byte], so: int, v: uint32) = cast[ptr uint32](addr dst[so])[] = leSwap32(v)
 
 proc sha256Transform(state: var array[8, uint32], data: openArray[byte]) =
   var
     t0, t1: uint32
     W {.noinit.}: array[64, uint32]
 
-  W[0]  = beLoad32(data, 0); W[1]   = beLoad32(data, 4);
-  W[2]  = beLoad32(data, 8); W[3]   = beLoad32(data, 12)
-  W[4]  = beLoad32(data, 16); W[5]  = beLoad32(data, 20)
-  W[6]  = beLoad32(data, 24); W[7]  = beLoad32(data, 28)
-  W[8]  = beLoad32(data, 32); W[9]  = beLoad32(data, 36)
-  W[10] = beLoad32(data, 40); W[11] = beLoad32(data, 44)
-  W[12] = beLoad32(data, 48); W[13] = beLoad32(data, 52)
-  W[14] = beLoad32(data, 56); W[15] = beLoad32(data, 60)
+  W[0]  = beLoad32(data, 0)
+  W[1]  = beLoad32(data, 4)
+  W[2]  = beLoad32(data, 8)
+  W[3]  = beLoad32(data, 12)
+  W[4]  = beLoad32(data, 16)
+  W[5]  = beLoad32(data, 20)
+  W[6]  = beLoad32(data, 24)
+  W[7]  = beLoad32(data, 28)
+  W[8]  = beLoad32(data, 32)
+  W[9]  = beLoad32(data, 36)
+  W[10] = beLoad32(data, 40)
+  W[11] = beLoad32(data, 44)
+  W[12] = beLoad32(data, 48)
+  W[13] = beLoad32(data, 52)
+  W[14] = beLoad32(data, 56)
+  W[15] = beLoad32(data, 60)
 
   for i in 16 ..< 64: W[i] = SIG1(W[i - 2]) + W[i - 7] + SIG0(W[i - 15]) + W[i - 16]
 
@@ -220,12 +213,11 @@ proc init(ctx: var SHA256) =
 
 proc init[M](hmctx: var HMAC, key: openArray[M]) =
   var kpad: hmctx.ipad.type
-  hmctx.mdctx = sha256()
+  hmctx.mdctx   = sha256()
   hmctx.opadctx = sha256()
   init hmctx.opadctx
 
-  if key.len > 0:
-      copyMem(kpad, 0, key, 0, len(key))
+  if key.len > 0: copyMem(kpad, 0, key, 0, len(key))
 
   for i in 0 ..< 64:
     hmctx.opad[i] = 0x5C'u8 xor kpad[i]
@@ -251,7 +243,7 @@ proc finalize256(ctx: var SHA256) {.inline.} =
   beStore32(ctx.buffer, 60, ctx.count[0])
   sha256Transform(ctx.state, ctx.buffer)
 
-proc finish*(ctx: var SHA256, data: var openArray[byte]):uint {.inline.} =
+proc finish*(ctx: var SHA256, data: var openArray[byte]): uint {.inline.} =
   finalize256(ctx)
   beStore32(data, 0, ctx.state[0])
   beStore32(data, 4, ctx.state[1])
@@ -279,8 +271,8 @@ proc burnMem(p: pointer, size: Natural) =
       sp = cast[ptr byte](cast[uint](sp) + 1)
       dec(c)
 
-proc burnMem[T](a: var T) {.inline.} = burnMem(addr a, sizeof(T))
-proc clear(hmctx: var HMAC) = burnMem(hmctx)
+proc burnMem[T](a: var T)   {.inline.} = burnMem(addr a, sizeof(T))
+proc clear(hmctx: var HMAC) {.inline.} = burnMem(hmctx)
 
 proc hexDigit(x: int, lowercase: bool = false): char =
   var off = uint32(0x41 - 0x3A)
