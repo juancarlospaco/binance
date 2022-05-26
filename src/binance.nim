@@ -181,28 +181,32 @@ template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static
   when not lowest.isNaN:  assert floaty >= lowest,  "Value must be >= " & $lowest
   when not highest.isNaN: assert floaty <= highest, "Value must be <= " & $highest
 
-proc truncate*(self: Binance; number: float, digits: uint): float =
-  ## Utility function to truncate a float to a certain number of digits.
-  checkFloat(number)
-  doAssert digits > 1, "digits must not be Zero"
-  var
-    resp = ""
-    startCounting = false
-    countDigit: uint = 0
-  if number < 1.0:
-    var numberStr = fmt"{number:>.20f}"
-    for i in 0 ..< numberStr.len:
-      if numberStr[0] != '0' and numberStr[i] != ',' and numberStr[i] != '.':
-        startCounting = true
-      if startCounting:
-        inc countDigit
-      resp.add numberStr[i]
 
-      if countDigit == digits:
-        break
-    result = parseFloat(resp[0 .. 5])
-  else:
-    result = round(number,2)
+template truncate*(number: float): float =
+  ## Truncate a float, this is a workaround, because `round` and `formatFloat` are fixed precision.
+  var dotFound = false
+  var s = newStringOfCap(8)
+  for c in number.formatFloat(ffDecimal, 6):
+    case c
+    of '.':
+      s.add c
+      dotFound = true
+    of '-':
+      s.add c
+    of '+':
+      discard
+    of '0'..'9':
+      if dotFound:
+        if c == '0':
+          s.add c
+        else:
+          s.add c
+          break
+      else:
+        s.add c
+    else:
+      discard
+  parseFloat(s)
 
 
 converter interval_to_milliseconds(interval: Interval): int =
@@ -213,7 +217,7 @@ converter interval_to_milliseconds(interval: Interval): int =
     of 'h': 60 * 60
     of 'd': 24 * 60 * 60
     of 'w': 7  * 24 * 60 * 60
-    else: 1
+    else  : 1
   ) * 1_000
 
 
@@ -223,8 +227,8 @@ converter date_to_milliseconds(d: Duration): int64 =
   epoch -= d
   epoch.inMilliseconds
 
+
 template close*(self: Binance) = self.client.close()
-template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 
 
 proc request*(self: Binance; endpoint: string; httpMethod: static[HttpMethod]): JsonNode =
@@ -266,7 +270,7 @@ proc avgPrice*(self: Binance, symbol: string): string =
 
 #Get user wallet assets
 proc updateUserWallet(self: var Binance, accountType: AccountType = SPOT_ACCOUNT) =
-  let wallet = parseJson(self.getContent(self.accountData(accountType)))
+  let wallet = self.request(self.accountData(accountType), HttpGet)
   var key: string
   case accountType:
   of SPOT_ACCOUNT:
@@ -336,7 +340,7 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   result.updateUserWallet(MARGIN_ACCOUNT)
   result.updateUserWallet(ISOLATED_ACCOUNT)
   # retrieves exchange info for trading uses.
-  result.exchangeData = result.getContent(result.exchangeInfo())
+  result.exchangeData = result.client.getContent(result.exchangeInfo())
 
 
 ## Retrieves current or updated wallet info
@@ -376,7 +380,7 @@ proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe
         of $PERCENT_PRICE:
           min = f["multiplierDown"].getStr.parseFloat
           max = f["multiplierUp"].getStr.parseFloat
-          stepSize = parseJson(self.getContent(self.avgPrice(symbol)))["price"].getStr.parseFloat
+          stepSize = self.request(self.avgPrice(symbol), HttpGet)["price"].getStr.parseFloat
           result = price >= stepSize * min and price <= stepSize * max
           echo "PERCENT_PRICE: ", $result
         of $MIN_NOTIONAL:
@@ -517,7 +521,7 @@ proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, sta
 
   while true:
     url = self.klines(symbol = symbol, interval = interval, limit = limit, startTime = start_str, endTime = end_str)
-    temp_data = parseJson(self.getContent(url))
+    temp_data = self.request(url, HttpGet)
     output_data.add temp_data
 
     # set our start timestamp using the last value in the array
@@ -1062,8 +1066,7 @@ proc verify*(self: Binance; referenceNo: string): string =
 #   self.signQueryString"order"
 
 
-
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
   let preparedEndpoint: string = client.ping()
-  echo client.getContent(preparedEndpoint)
+  echo client.request(preparedEndpoint, HttpGet)
