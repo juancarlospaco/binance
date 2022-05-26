@@ -227,11 +227,11 @@ template close*(self: Binance) = self.client.close()
 template getContent*(self: Binance, url: string): string = self.client.getContent(url)
 
 
-proc request*(self: Binance; endpoint: string; httpMethod: HttpMethod = HttpGet): string =
+proc request*(self: Binance; endpoint: string; httpMethod: static[HttpMethod]): JsonNode =
   ## Httpclient request but with a Retry.
   for _ in 0 .. 9:
     try:
-      result = self.client.request(url = endpoint, httpMethod = httpMethod).body
+      result = parseJson(self.client.request(url = endpoint, httpMethod = httpMethod).body)
       break
     except:
       continue
@@ -739,7 +739,7 @@ proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Posit
   ## Get top market cap trading pairs, ordered from big to small, filtered by `stablecoin`, maximum of `limit`.
   ## * This needs to iterate all pairs sadly, because the API sends it unordered, >300 pairs for any `stablecoin`.
   assert stablecoin.len > 0, "stablecoin must not be empty string"
-  let data: JsonNode = parseJson(self.request(self.getProducts()))["data"]
+  let data: JsonNode = self.request(self.getProducts(), HttpGet)["data"]
   result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
   for coin in data:
     let pair: string = coin["s"].getStr
@@ -752,7 +752,7 @@ proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Posit
 proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h: float] =
   ## Get 24 hours Highest price and Lowest price for a symbol.
   assert symbolTicker.len > 0, "symbolTicker must not be empty string"
-  let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))
+  let temp = self.request(self.ticker24h(symbolTicker), HttpGet)
   result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
 
 
@@ -767,7 +767,7 @@ proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int
 
 proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
   var
-    tp = parseJson(self.request(self.tickerPrice(ticker)))
+    tp = self.request(self.tickerPrice(ticker), HttpGet)
     data = parseJson(self.exchangeInfo(symbols = @[ticker], fromMemory = true))
     current_amount = self.getStableCoinsInWallet()[data["quoteAsset"].getStr]
     baseAsset  = data["baseAsset"].getStr
@@ -817,7 +817,7 @@ proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo
     (coin, market) = assets
 
     for m in marketDetails[coin]:
-      var tp = parseJson(self.request(self.tickerPrice(m[1])))
+      var tp = self.request(self.tickerPrice(m[1]), HttpGet)
       var priceToBuy = tp["price"].getStr.parseFloat
 
       for asset in exchangeData:
@@ -864,10 +864,12 @@ proc checkEarnings*(self: var Binance; coin: string): bool =
   result = afterTrade[coin].free > cache[coin].free
 
 
-template donateToAddress*(self: Binance; address: string; amount = 0.0000095; coin = "BTC") =
+template donateToAddress*(self: Binance; address: string; amount = 0.0000095; coin = "BTC"): JsonNode =
   ## Donate to an specific `address`, using `"BSC"` network, using `"BTC"` as `coin` by default, the minimum `amount` possible of `0.0000095` by default.
   assert address.len > 1, "Please provide a valid address, BSC network."
-  discard self.request(self.withDrawApply(coin, address, amount, "BSC"), HttpPost)
+  assert coin.len > 1, "Please provide a valid coin ticker."
+  assert amount > 0.0, "Please provide a valid amount."
+  self.request(self.withDrawApply(coin, address, amount, "BSC"), HttpPost)
 
 
 proc ma50*(self: Binance; ticker: string): float =
@@ -912,7 +914,7 @@ proc enableFastWithdraw*(self: Binance): string =
 
 
 proc marginLevel*(self: Binance): float =
-  parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["marginLevel"].getStr.parseFloat
+  self.request(self.accountData(MARGIN_ACCOUNT), HttpGet)["marginLevel"].getStr.parseFloat
 
 
 proc priceIndex*(self: Binance): string =
@@ -920,10 +922,9 @@ proc priceIndex*(self: Binance): string =
 
 
 proc totalDebt*(self: Binance): float =
-  var
-    debt  = parseJson(self.request(self.accountData(MARGIN_ACCOUNT)))["totalLiabilityOfBtc"].getStr.parseFloat
-    price = parseJson(self.request(self.priceIndex))["price"].getStr.parseFloat
-  price * debt
+  ## price * debt
+  self.request(self.accountData(MARGIN_ACCOUNT), HttpGet)["totalLiabilityOfBtc"].getStr.parseFloat * self.request(self.priceIndex, HttpGet)["price"].getStr.parseFloat
+
 
 
 proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
@@ -963,7 +964,7 @@ proc borrow*(self: Binance, asset: string, amount: float, accountType: AccountTy
   if accountType == ISOLATED_ACCOUNT:
     result.add "&isIsolated=TRUE"
     result.add "&symbol="
-    result.add self.marginAsset
+    result.add asset & "USDT"
 
   self.signQueryString("margin/loan", sapi = true)
 
@@ -976,7 +977,7 @@ proc repay*(self: Binance, asset: string, amount: float, accountType: AccountTyp
   if accountType == ISOLATED_ACCOUNT:
     result.add "&isIsolated=TRUE"
     result.add "&symbol="
-    result.add self.marginAsset
+    result.add asset & "USDT"
 
   self.signQueryString("margin/repay", sapi = true)
 
@@ -1028,6 +1029,38 @@ proc verify*(self: Binance; referenceNo: string): string =
   result = "referenceNo="
   result.add referenceNo
   self.signQueryString("giftcard/verify", sapi = true)
+
+
+# Futures endpoints.
+
+
+# proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price, stopPrice, activationPrice, callbackRate: float): string =
+#   self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
+#   result = "symbol="
+#   result.add symbol
+#   result.add "&side="
+#   result.add $side
+#   result.add "&type="
+#   result.add $tipe
+#   result.add "&quantity="
+#   result.add quantity.formatFloat(ffDecimal, 6)
+#   result.add "&stopPrice="
+#   result.add $stopPrice
+#   result.add "&activationPrice="
+#   result.add $activationPrice
+#   result.add "&callbackRate="
+#   result.add $callbackRate
+
+
+
+#   if tipe == ORDER_TYPE_LIMIT:
+#     result.add "&timeInForce="
+#     result.add timeInForce
+#     result.add "&price="
+#     result.add price.formatFloat(ffDecimal, 2)
+
+#   self.signQueryString"order"
+
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
