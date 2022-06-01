@@ -1,78 +1,24 @@
-import std/[times, httpclient, httpcore, json, strutils, math, strformat, tables, os, algorithm], binance/binance_sha256
+import std/[times, httpclient, httpcore, json, strutils, math, tables, os, algorithm, macros], binance/binance_sha256
+
 
 type
   Balances = object
     spot*: Table[string, tuple[free, locked: float]]
-    margin*: Table[string, tuple[free, locked, interest, netAsset, borrowed: float]]
-    isolated*: Table[string, seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]]
 
   Binance* = object  ## Binance API Client.
-    apiKey*, apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
-    recvWindow*: 5_000..60_000   ## "Tolerance" for requests timeouts, Binance is very strict about "Timestamp" diff.
+    apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
     client: HttpClient
     balances: Balances
-    marginAsset*: string
-    exchangeData: string
-    prechecks*: bool
-
-  TradingInfoStatus* = enum
-    PREPARED      = "PREPARED"
-    WITHOUT_FUNDS = "WITHOUT_FUNDS"
-
-  MarketCap*    = seq[tuple[marketCap: int, ticker: string]]
-  TradingInfo*  = tuple[baseAsset, quoteAsset: string, price, amount, quoteAmount: float, status: TradingInfoStatus]
-
-  CoinType* = enum
-    STABLE_COIN = "STABLE_COIN"
-    ALT_COIN    = "ALT_COIN"
-
-  AccountType* = enum
-    SPOT_ACCOUNT     = "SPOT"
-    MARGIN_ACCOUNT   = "MARGIN"
-    ISOLATED_ACCOUNT = "ISOLATED"
-
-  FilterRule = enum
-    PRICE_FILTER        = "PRICE_FILTER"        ## Defines the price rules for a symbol
-    PERCENT_PRICE       = "PERCENT_PRICE"       ## Defines valid range for a price based on the average of the previous trades
-    LOT_SIZE            = "LOT_SIZE"            ## Defines the quantity (aka "lots" in auction terms) rules for a symbol
-    MIN_NOTIONAL        = "MIN_NOTIONAL"        ## Defines the minimum notional value allowed for an order on a symbol
-#    ICEBERG_PARTS       = "ICEBERG_PARTS"       ## Defines the maximum parts an iceberg order can have
-    MARKET_LOT_SIZE     = "MARKET_LOT_SIZE"     ## Defines the quantity (aka "lots" in auction terms) rules for MARKET orders on a symbol
-    MAX_NUM_ORDERS      = "MAX_NUM_ORDERS"      ## Defines the maximum number of orders an account is allowed to have open on a symbol
-#    MAX_NUM_ALGO_ORDERS = "MAX_NUM_ALGO_ORDERS" ## Defines the maximum number of "algo" orders an account is allowed to have open on a symbol
-
-
-  HistoricalKlinesType* = enum
-    SPOT    = 1
-    FUTURES = 2
-
-  FuturesType* = enum
-    USD_M  = 1
-    COIN_M = 2
 
   Side* = enum
     SIDE_BUY  = "BUY"
     SIDE_SELL = "SELL"
-
-  ContractType* = enum
-    PERPETUAL       = "perpetual"
-    CURRENT_QUARTER = "current_quarter"
-    NEXT_QUARTER    = "next_quarter"
 
   TimeInForce* = enum
     TIME_IN_FORCE_GTC = "GTC"  # Good Till Cancelled
     TIME_IN_FORCE_IOC = "IOC"  # Immediate Or Cancel
     TIME_IN_FORCE_FOK = "FOK"  # Fill Or Kill
     TIME_IN_FORCE_GTX = "GTX"  # Post Only
-
-  OrderStatus* = enum
-    ORDER_STATUS_NEW              = "NEW"
-    ORDER_STATUS_PARTIALLY_FILLED = "PARTIALLY_FILLED"
-    ORDER_STATUS_FILLED           = "FILLED"
-    ORDER_STATUS_CANCELED         = "CANCELED"
-    ORDER_STATUS_PENDING_CANCEL   = "PENDING_CANCEL"
-    ORDER_STATUS_REJECTED         = "REJECTED"
-    ORDER_STATUS_EXPIRED          = "EXPIRED"
 
   Interval* = enum
     KLINE_INTERVAL_1MINUTE  = "1m"
@@ -114,99 +60,35 @@ type
     ORDER_RESP_TYPE_RESULT = "RESULT"
     ORDER_RESP_TYPE_FULL   = "FULL"
 
-  WebSocketDepth* = enum
-    WEBSOCKET_DEPTH_5  = "5"
-    WEBSOCKET_DEPTH_10 = "10"
-    WEBSOCKET_DEPTH_20 = "20"
-
-  AggregateTrades* = enum  ## For accessing the data returned by Client.aggregate_trades().
-    AGG_BEST_MATCH     = 'M'
-    AGG_TIME           = 'T'
-    AGG_ID             = 'a'
-    AGG_FIRST_TRADE_ID = 'f'
-    AGG_LAST_TRADE_ID  = 'l'
-    AGG_BUYER_MAKES    = 'm'
-    AGG_PRICE          = 'p'
-    AGG_QUANTITY       = 'q'
-
-  AssetTransfer* = enum    ## New asset transfer API Enum.
-    SPOT_TO_FIAT                = "MAIN_C2C"
-    SPOT_TO_USDT_FUTURE         = "MAIN_UMFUTURE"
-    SPOT_TO_COIN_FUTURE         = "MAIN_CMFUTURE"
-    SPOT_TO_MARGIN_CROSS        = "MAIN_MARGIN"
-    SPOT_TO_MARGIN_ISOLATED     = "SPOT_TO_MARGIN_ISOLATED"
-    SPOT_TO_MINING              = "MAIN_MINING"
-    FIAT_TO_SPOT                = "C2C_MAIN"
-    FIAT_TO_USDT_FUTURE         = "C2C_UMFUTURE"
-    FIAT_TO_MINING              = "C2C_MINING"
-    USDT_FUTURE_TO_SPOT         = "UMFUTURE_MAIN"
-    USDT_FUTURE_TO_FIAT         = "UMFUTURE_C2C"
-    USDT_FUTURE_TO_MARGIN_CROSS = "UMFUTURE_MARGIN"
-    COIN_FUTURE_TO_SPOT         = "CMFUTURE_MAIN"
-    MARGIN_CROSS_TO_SPOT        = "MARGIN_MAIN"
-    MARGIN_ISOLATED_TO_SPOT     = "MARGIN_ISOLATED_TO_SPOT"
-    MARGIN_CROSS_TO_USDT_FUTURE = "MARGIN_UMFUTURE"
-    MINING_TO_SPOT              = "MINING_MAIN"
-    MINING_TO_USDT_FUTURE       = "MINING_UMFUTURE"
-    MINING_TO_FIAT              = "MINING_C2C"
-
-  RateLimitTypes* = enum
-    RLRequests = "REQUESTS"
-    RLOrders   = "ORDERS"
-
-  RateLimitIntervals* = enum
-    RLISecond = "SECOND"
-    RLIMinute = "MINUTE"
-    RLIDay    = "DAY"
-
-  SymbolStatus* {.pure.} = enum
-    PreTrading   = "PRE_TRADING"
-    Trading      = "TRADING"
-    PostTrading  = "POST_TRADING"
-    EndOfDay     = "END_OF_DAY"
-    Halt         = "HALT"
-    AuctionMatch = "AUCTION_MATCH"
-    Break        = "BREAK"
+  IncomeType* {.pure.} = enum
+    TRANSFER             = "TRANSFER"
+    WELCOME_BONUS        = "WELCOME_BONUS"
+    REALIZED_PNL         = "REALIZED_PNL"
+    FUNDING_FEE          = "FUNDING_FEE"
+    COMMISSION           = "COMMISSION"
+    INSURANCE_CLEAR      = "INSURANCE_CLEAR"
+    REFERRAL_KICKBACK    = "REFERRAL_KICKBACK"
+    COMMISSION_REBATE    = "COMMISSION_REBATE"
+    DELIVERED_SETTELMENT = "DELIVERED_SETTELMENT"
+    COIN_SWAP_DEPOSIT    = "COIN_SWAP_DEPOSIT"
+    COIN_SWAP_WITHDRAW   = "COIN_SWAP_WITHDRAW"
 
 
-const binanceAPIUrl* {.strdefine.} = "https://api.binance.com"  ## `-d:binanceAPIUrl="https://testnet.binance.vision"` for Testnet.
-const stableCoins* = ["USDT", "BUSD", "USDC", "UST", "DAI", "USDP"]
+const stableCoins* = ["USDT", "BUSD", "USDC", "DAI", "USDP"]
 
 
-template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static[float] = NaN) =
-  ## Utility template to check if a float is valid, because float sux.
-  assert not floaty.isNaN, "Value must not be  NaN"
-  assert floaty != +Inf,   "Value must not be +Inf"
-  assert floaty != -Inf,   "Value must not be -Inf"
-  when not lowest.isNaN:  assert floaty >= lowest,  "Value must be >= " & $lowest
-  when not highest.isNaN: assert floaty <= highest, "Value must be <= " & $highest
-
-
-template truncate*(number: float): float =
-  ## Truncate a float, this is a workaround, because `round` and `formatFloat` are fixed precision.
-  var dotFound = false
-  var s = newStringOfCap(8)
-  for c in number.formatFloat(ffDecimal, 6):
-    case c
-    of '.':
-      s.add c
-      dotFound = true
-    of '-':
-      s.add c
-    of '+':
-      discard
-    of '0'..'9':
-      if dotFound:
-        if c == '0':
-          s.add c
-        else:
-          s.add c
-          break
-      else:
-        s.add c
-    else:
-      discard
-  parseFloat(s)
+macro unrollEncodeQuery*(target: var string; args: openArray[(string, auto)]; escape: typed = nil; quote: static[bool] = false) =
+  doAssert args.len > 0, "Iterable must not be empty, because theres nothing to unroll"
+  result = newStmtList()
+  for i, item in args:
+    let key: string = item[1][0].strVal
+    doAssert key.len > 0, "Key must not be empty string."
+    if len(target) > 0: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('&'))
+    for c in key: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), c.newLit)
+    result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('='))
+    if quote: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('"'))
+    result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), if escape != nil: nnkCall.newTree(escape, item[1][1]) else: item[1][1])
+    if quote: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('"'))
 
 
 converter interval_to_milliseconds(interval: Interval): int =
@@ -241,58 +123,38 @@ proc request*(self: Binance; endpoint: string; httpMethod: static[HttpMethod]): 
       continue
 
 
-template signQueryString(self: Binance; endpoint: string, sapi: bool = false) =
+template signQueryString(self: Binance; endpoint: string) =
   ## Sign the query string for Binance API, reusing the same string.
-  result.add if len(result) > 0: "&recvWindow=" else: "recvWindow="
-  result.addInt self.recvWindow
-  result.add "&timestamp="
-  result.addInt now().utc.toTime.toUnix * 1_000  # UTC Timestamp.
+  unrollEncodeQuery(result, {"recvWindow": "9999", "timestamp": $(now().utc.toTime.toUnix * 1_000)})
   let signature: string = sha256.hmac(self.apiSecret, result)
-  result.add "&signature="
-  result.add signature
-  result = binanceAPIUrl & (if not sapi: "/api/v3/" else: "/sapi/v1/") & endpoint & '?' & result
-
-#GET /{s}api/v3/account
-#Get the current account information
-proc accountData*(self: Binance, accountType: AccountType = SPOT_ACCOUNT): string =
-  case accountType:
-  of SPOT_ACCOUNT:  self.signQueryString"account"
-  of MARGIN_ACCOUNT: self.signQueryString("margin/account", sapi = true)
-  else: self.signQueryString("margin/isolated/account", sapi = true)
+  unrollEncodeQuery(result, {"signature": signature})
+  result = endpoint & '?' & result
 
 
-#GET /api/v3/avgPrice
-#Current average price for a symbol.
+proc accountData*(self: Binance): string =
+  ## Get the current account information
+  self.signQueryString("https://api.binance.com/api/v3/account")
+
+
 proc avgPrice*(self: Binance, symbol: string): string =
-  result = static(binanceAPIUrl & "/api/v3/avgPrice?symbol=")
-  result.add symbol
+  ## Current average price for a symbol.
+  result = "https://api.binance.com/api/v3/avgPrice"
+  unrollEncodeQuery(result, {"symbol": symbol})
 
 
 #Get user wallet assets
-proc updateUserWallet(self: var Binance, accountType: AccountType = SPOT_ACCOUNT) =
-  let wallet = self.request(self.accountData(accountType), HttpGet)
+proc updateUserWallet(self: var Binance) =
+  let wallet = self.request(self.accountData(), HttpGet)
   var key: string
-  case accountType:
-  of SPOT_ACCOUNT:
-    self.balances.spot = initTable[string, tuple[free, locked: float]]()
-    key = "balances"
-  of MARGIN_ACCOUNT:
-    self.balances.margin = initTable[string, tuple[free, locked, interest, netAsset, borrowed: float]]()
-    key = "userAssets"
-  else:
-    self.balances.isolated = initTable[string, seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]]()
-    key = "assets"
+  self.balances.spot = initTable[string, tuple[free, locked: float]]()
+  key = "balances"
 
   let wallet_data = wallet[key]
   for asset in wallet_data:
     # Hide 0 balances
     if asset{"free"}.getStr != "":
       if asset{"free"}.getStr.parseFloat != 0.0:
-        case accountType:
-        of SPOT_ACCOUNT:
-          self.balances.spot[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
-        else:
-          self.balances.margin[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat, asset["interest"].getStr.parseFloat, asset["netAsset"].getStr.parseFloat, asset["borrowed"].getStr.parseFloat)
+        self.balances.spot[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
     else:
       var data:seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]
       for a in ["baseAsset", "quoteAsset"]:
@@ -301,53 +163,23 @@ proc updateUserWallet(self: var Binance, accountType: AccountType = SPOT_ACCOUNT
       self.balances.isolated[asset["symbol"].getStr] = data
 
 
-proc exchangeInfo*(self: Binance, symbols: seq[string] = @[], fromMemory: bool = false): string =
-  ## Exchange information, info about Binance.
-  if not fromMemory:
-    result = binanceAPIUrl & "/api/v3/exchangeInfo"
-    if len(symbols) != 0:
-      # Get information about 1 or more symbols
-      if len(symbols) == 1:
-        result.add "?symbol="
-        result.add symbols[0]
-      else:
-        result.add "?symbols="
-        result.add "%5B%22"
-        result.add symbols.join(",").replace(",","%22%2C%22")
-        result.add "%22%5D"
-  else:
-    result = self.exchangeData.parseJson.pretty
-    if len(symbols) != 0:
-      result = ""
-      var temp_result = (self.exchangeData.parseJson)["symbols"]
-      var fetched:seq[string]
-      for symbol in symbols:
-        for k in temp_result:
-          if k["symbol"].getStr notin fetched and k["symbol"].getStr == symbol:
-            fetched.add symbol
-            result.add k.pretty
-
-
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
-  assert apiKey.len > 0 and apiSecret.len > 0, "apiKey and apiSecret must not be empty string."
-  var client = newHttpClient(timeout = 99_999)
+  assert apiKey.len    > 64, "apiKey must be a string of >64 chars."
+  assert apiSecret.len > 64, "apiSecret must be a string of >64 chars."
+  var client = newHttpClient(timeout = 999_999)
   client.headers.add "X-MBX-APIKEY", apiKey
   client.headers.add "DNT", "1"
-  result = Binance(apiKey: apiKey, apiSecret: apiSecret, recvWindow: 10_000, client: client)
+  result = Binance(apiSecret: apiSecret, client: client)
   # user wallet is cached in memory at runtime.
   result.updateUserWallet
-  result.updateUserWallet(MARGIN_ACCOUNT)
-  result.updateUserWallet(ISOLATED_ACCOUNT)
-  # retrieves exchange info for trading uses.
-  result.exchangeData = result.client.getContent(result.exchangeInfo())
 
 
-## Retrieves current or updated wallet info
-proc userWallet*(self: var Binance, update:bool = false, accountType: AccountType = SPOT_ACCOUNT): Balances =
-  if update:
-    self.updateUserWallet(accountType)
+proc userWallet*(self: var Binance, update: bool = false): Balances =
+  ## Retrieves current or updated wallet info
+  if update: self.updateUserWallet()
   self.balances
+
 
 proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
   var myWallet = self.userWallet(update = true).spot
@@ -356,171 +188,88 @@ proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
       result[coin] = myWallet[coin].free
 
 
-proc verifyFiltersRule(self:Binance, symbol: string, price, quantity:float, tipe: OrderType):bool =
-  var
-    data = parseJson(self.exchangeInfo(fromMemory = true))["symbols"].getElems
-    min:float
-    max:float
-    stepSize:float
-
-  for item in data:
-    if item["symbol"].getStr == symbol:
-      var filters = item["filters"]
-      for f in filters:
-        case f["filterType"].getStr:
-        of $PRICE_FILTER:
-          result = true
-          # price_filter is disabled for market orders
-          if tipe != ORDER_TYPE_MARKET:
-            min = f["minPrice"].getStr.parseFloat
-            max = f["maxPrice"].getStr.parseFloat
-            stepSize = f["tickSize"].getStr.parseFloat
-            result = price >= min and price <= max and price - (price / stepSize) * stepSize == 0
-          echo "PRICE_FILTER: ", $result
-        of $PERCENT_PRICE:
-          min = f["multiplierDown"].getStr.parseFloat
-          max = f["multiplierUp"].getStr.parseFloat
-          stepSize = self.request(self.avgPrice(symbol), HttpGet)["price"].getStr.parseFloat
-          result = price >= stepSize * min and price <= stepSize * max
-          echo "PERCENT_PRICE: ", $result
-        of $MIN_NOTIONAL:
-          min = f["minNotional"].getStr.parseFloat
-          result = price * quantity >= min
-          echo "MIN_NOTIONAL: ", $result
-        of $LOT_SIZE:
-          min = f["minQty"].getStr.parseFloat
-          max = f["maxQty"].getStr.parseFloat
-          stepSize = f["stepSize"].getStr.parseFloat
-          result = quantity >= min and quantity <= max and round(quantity - (quantity / stepSize) * stepSize) == 0
-          echo "LOT_SIZE: ", $result
-        of $MARKET_LOT_SIZE:
-          result = true
-          if tipe == ORDER_TYPE_MARKET:
-            min = f["minQty"].getStr.parseFloat
-            max = f["maxQty"].getStr.parseFloat
-            stepSize = f["stepSize"].getStr.parseFloat
-            result = quantity >= min and quantity <= max and round(quantity - (quantity / stepSize) * stepSize) == 0
-            echo "MARKET_LOT_SIZE: ", result
-
-      break
+# Generic endpoints ###########################################################
 
 
-# Generic endpoints.
-
-proc ping*(self: Binance): string =
+proc ping*(self: Binance): string {.inline.} =
   ## Test connectivity to Binance, just a ping.
-  result = binanceAPIUrl & "/api/v3/ping"
+  result = "https://api.binance.com/api/v3/ping"
 
 
-proc time*(self: Binance): string =
+proc time*(self: Binance): string {.inline.} =
   ## Get current Binance API server time.
-  result = binanceAPIUrl & "/api/v3/time"
+  result = "https://api.binance.com/api/v3/time"
 
 
-# Market Data Endpoints
+# Market Data #################################################################
 
 
-proc orderBook*(self: Binance; symbol: string; limit: 5..1000 = 100): string =
+proc orderBook*(self: Binance; symbol: string): string =
   ## Order book depth.
-  doAssert limit in {5, 10, 20, 50, 100, 500, 1_000}, "limit value must be an integer in the set of {5, 10, 20, 50, 100, 500, 1000}"
-  result = static(binanceAPIUrl & "/api/v3/depth?symbol=")
-  result.add symbol
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/depth"
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
 
 
-proc recentTrades*(self: Binance; symbol: string; limit: 1..500 = 500): string =
+proc recentTrades*(self: Binance; symbol: string): string =
   ## Get a list of recent Trades.
-  result = static(binanceAPIUrl & "/api/v3/trades?symbol=")
-  result.add symbol
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/trades"
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
 
 
-proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500; fromId: Positive): string =
+proc olderTrades*(self: Binance; symbol: string; fromId: Positive): string =
   ## Old historical Trades.
-  result = static(binanceAPIUrl & "/api/v3/historicalTrades?symbol=")
-  result.add symbol
-  result.add "&limit="
-  result.addInt limit
-  result.add "&fromId="
-  result.addInt fromId
+  result = "https://api.binance.com/api/v3/historicalTrades"
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"})
 
 
-proc olderTrades*(self: Binance; symbol: string; limit: 1..500 = 500): string =
+proc olderTrades*(self: Binance; symbol: string): string =
   ## Old historical Trades.
-  result = static(binanceAPIUrl & "/api/v3/historicalTrades?symbol=")
-  result.add symbol
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/historicalTrades"
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
 
 
-proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: Positive; limit: 1..500 = 500): string =
+proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: Positive): string =
   ## Aggregated Trades list.
   assert endTime - startTime < 24 * 36000000, "startTime/endTime must be 2 integers representing a time interval smaller than 24 hours."
-  result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
-  result.add symbol
-  result.add "&fromId="
-  result.addInt fromId
-  result.add "&startTime="
-  result.addInt startTime
-  result.add "&endTime="
-  result.addInt endTime
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/aggTrades"
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
 
 
-proc aggrTrades*(self: Binance; symbol: string; fromId: Positive; limit: 1..500 = 500): string =
+proc aggrTrades*(self: Binance; symbol: string; fromId: Positive): string =
   ## Aggregated Trades list.
-  result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
-  result.add symbol
-  result.add "&fromId="
-  result.addInt fromId
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/aggTrades"
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"})
 
 
 proc aggrTrades*(self: Binance; symbol: string): string =
   ## Aggregated Trades list.
-  result = static(binanceAPIUrl & "/api/v3/aggTrades?symbol=")
-  result.add symbol
+  result = "https://api.binance.com/api/v3/aggTrades"
+  unrollEncodeQuery(result, {"symbol": symbol})
 
 
-proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: int64; limit: 1..500 = 500): string =
+proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: int64): string =
   ## Klines data, AKA Candlestick data.
-  result = static(binanceAPIUrl & "/api/v3/klines?symbol=")
-  result.add symbol
-  result.add "&startTime="
-  result.addInt startTime
-  result.add "&endTime="
-  result.addInt endTime
-  result.add "&interval="
-  result.add $interval
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/klines"
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "interval": $interval, "limit": "500"})
 
 
-proc klines*(self: Binance; symbol: string; interval: Interval; limit: 1..500 = 500): string =
+proc klines*(self: Binance; symbol: string; interval: Interval): string =
   ## Klines data, AKA Candlestick data.
-  result = static(binanceAPIUrl & "/api/v3/klines?symbol=")
-  result.add symbol
-  result.add "&interval="
-  result.add $interval
-  result.add "&limit="
-  result.addInt limit
+  result = "https://api.binance.com/api/v3/klines"
+  unrollEncodeQuery(result, {"symbol": symbol, "interval": $interval, "limit": "500"})
 
 
-proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, start_str: Duration, end_str: Duration = initDuration(seconds = 0), kline_type: HistoricalKlinesType = SPOT, limit: int = 500): JsonNode =
+proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, start_str: Duration, end_str: Duration = initDuration(seconds = 0)): JsonNode =
   var
     output_data = newJArray()
-    timeframe: int = interval  #invoke interval_to_milliseconds
+    timeframe: int = interval  # invoke interval_to_milliseconds
     start_ts: int64 = start_str
     idx = 0
     url: string
     temp_data: JsonNode
 
   while true:
-    url = self.klines(symbol = symbol, interval = interval, limit = limit, startTime = start_str, endTime = end_str)
+    url = self.klines(symbol = symbol, interval = interval, startTime = start_str, endTime = end_str)
     temp_data = self.request(url, HttpGet)
     output_data.add temp_data
 
@@ -528,7 +277,7 @@ proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, sta
     start_ts = temp_data[^1][0].getBiggestInt
     inc idx
 
-    if temp_data.len < limit:
+    if temp_data.len < 500:  # limit is 500.
       break
 
     start_ts += timeframe
@@ -541,312 +290,524 @@ proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, sta
 
 proc ticker24h*(self: Binance; symbol: string): string =
   ## Price changes in the last 24 hours.
-  result = static(binanceAPIUrl & "/api/v3/ticker/24hr?symbol=")
-  result.add symbol
+  result = "https://api.binance.com/api/v3/ticker/24hr"
+  unrollEncodeQuery(result, {"symbol": symbol})
 
 
-proc ticker24h*(self: Binance): string =
+proc ticker24h*(self: Binance): string {.inline.} =
   ## Price changes in the last 24 hours.
-  result = static(binanceAPIUrl & "/api/v3/ticker/24hr")
+  result = "https://api.binance.com/api/v3/ticker/24hr"
 
 
 proc tickerPrice*(self: Binance; symbol: string): string =
   ## Symbol price.
-  result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=")
-  result.add symbol
+  result = "https://api.binance.com/api/v3/ticker/price"
+  unrollEncodeQuery(result, {"symbol": symbol})
 
 
-proc tickerPrice*(self: Binance): string =
+proc tickerPrice*(self: Binance): string {.inline.} =
   ## Symbol price.
-  result = static(binanceAPIUrl & "/api/v3/ticker/price")
+  result = "https://api.binance.com/api/v3/ticker/price"
 
 
 proc orderBookTicker*(self: Binance; symbol: string): string =
   ## Symbol order book.
-  result = static(binanceAPIUrl & "/api/v3/ticker/bookTicker?symbol=")
-  result.add symbol
+  result = "https://api.binance.com/api/v3/ticker/bookTicker"
+  unrollEncodeQuery(result, {"symbol": symbol})
 
 
-proc orderBookTicker*(self: Binance): string =
+proc orderBookTicker*(self: Binance): string {.inline.} =
   ## Symbol order book.
-  result = static(binanceAPIUrl & "/api/v3/ticker/bookTicker")
+  result = "https://api.binance.com/api/v3/ticker/bookTicker"
 
 
-# Account Trade
+# Account Trade ###############################################################
 
-#GET /api/v3/order
-#Check an order's status
+
 proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOrderId = 1.Positive): string =
-  result = "symbol="
-  result.add symbol
-  result.add "&orderId="
-  result.addInt orderId
-  result.add "&origClientOrderId="
-  result.addInt origClientOrderId
-  self.signQueryString"order"
+  ## Check an orders status.
+  unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId, "origClientOrderId": $origClientOrderId})
+  self.signQueryString("https://api.binance.com/api/v3/order")
 
 
-#POST /api/v3/order
-#Send in a new order.
 proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
-  self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
-  result = "symbol="
-  result.add symbol
-  result.add "&side="
-  result.add $side
-  result.add "&type="
-  result.add $tipe
-  result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 6)
-
-  if tipe == ORDER_TYPE_LIMIT:
-    result.add "&timeInForce="
-    result.add timeInForce
-    result.add "&price="
-    result.add price.formatFloat(ffDecimal, 2)
-
-  self.signQueryString"order"
+  ## Create a new order.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6)})
+  if tipe == ORDER_TYPE_LIMIT: unrollEncodeQuery(result, {"timeInForce": $timeInForce, "price": price.formatFloat(ffDecimal, 6)})
+  self.signQueryString"https://api.binance.com/api/v3/order"
 
 
 proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity, price: float): string =
-  result = "symbol="
-  result.add symbol
-  result.add "&side="
-  result.add $side
-  result.add "&type="
-  result.add $tipe
-  result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 6)
-  result.add "&price="
-  result.add price.formatFloat(ffDecimal, 2)
-  self.signQueryString"order"
+  ## Create a new order.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6), "price": price.formatFloat(ffDecimal, 6)})
+  self.signQueryString"https://api.binance.com/api/v3/order"
 
 
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float; accountType: AccountType = SPOT_ACCOUNT): string =
-  result = "symbol="
-  result.add symbol
-  result.add "&side="
-  result.add $side
-  result.add "&type="
-  result.add $tipe
-  result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 6)
-  if accountType != SPOT_ACCOUNT:
-    result.add "&isIsolated="
-    result.add if accountType == ISOLATED_ACCOUNT: "TRUE" else: "FALSE"
-  case accountType:
-  of SPOT_ACCOUNT: self.signQueryString"order"
-  of MARGIN_ACCOUNT, ISOLATED_ACCOUNT: self.signQueryString("margin/order", sapi = true)
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity: float): string =
+  ## Create a new order.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6)})
+  self.signQueryString("https://api.binance.com/api/v3/order")
 
 
-#POST /api/v3/order/test
-#Test new order creation and signature/recvWindow long.
-#Creates and validates a new order but does not send it into the matching engine
 proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
     timeInForce, newClientOrderId, symbol: string; quantity, price: float): string =
-  result = "symbol="
-  result.add symbol
-  result.add "&side="
-  result.add $side
-  result.add "&type="
-  result.add $tipe
-  result.add "&timeInForce="
-  result.add timeInForce
-  result.add "&quantity="
-  result.add $quantity
-  result.add "&price="
-  result.add $price
-  result.add "&newClientOrderId="
-  result.add newClientOrderId
-  result.add "&newOrderRespType="
-  result.add $newOrderRespType
-  self.signQueryString"order/test"
+  ## Test new order creation and signature/recvWindow. Creates and validates a new order but does not send it into the matching engine.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": $timeInForce, "quantity": $quantity, "price": $price, "newClientOrderId": $newClientOrderId, "newOrderRespType": $newOrderRespType})
+  self.signQueryString"https://api.binance.com/api/v3/order/test"
 
 
-
-#GET /api/v3/myTrades
-#Get trades for a specific account and symbol.
 proc myTrades*(self: Binance; symbol: string): string =
-  result = "symbol="
-  result.add symbol
-  self.signQueryString"myTrades"
+  ## Get trades for a specific account and symbol.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://api.binance.com/api/v3/myTrades"
 
 
-#GET /api/v3/rateLimit/order
-#Displays the user's current order count usage for all intervals.
 proc rateLimitOrder*(self: Binance): string =
-  self.signQueryString"rateLimit/order"
+  ## Displays the users current order count usage for all intervals.
+  self.signQueryString"https://api.binance.com/api/v3/rateLimit/order"
 
 
-#GET /api/v3/orderList
-#Retrieves all OCO based on provided optional parameters
 proc orderList*(self: Binance; orderListId = 1.Positive): string =
-  result = "orderListId="
-  result.addInt orderListId
-  self.signQueryString"orderList"
+  ## Retrieves all Orders based on provided optional parameters.
+  result = ""
+  unrollEncodeQuery(result, {"orderListId": $orderListId})
+  self.signQueryString"https://api.binance.com/api/v3/orderList"
 
 
-#GET /api/v3/allOrderList
-#Retrieves all OCO based on provided optional parameters
 proc allOrderList*(self: Binance): string =
-  self.signQueryString"allOrderList"
+  ## Retrieves all Orders.
+  self.signQueryString"https://api.binance.com/api/v3/allOrderList"
 
 
-#GET /api/v3/openOrderList
 proc openOrderList*(self: Binance): string =
-  self.signQueryString"openOrderList"
+  ## Retrieves all open Orders.
+  self.signQueryString"https://api.binance.com/api/v3/openOrderList"
 
-#POST /api/v3/order/oco
-#Send in a new OCO buy order
-proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float, stopLimitTimeInForce: string):string =
-  result = "symbol="
-  result.add symbol
-  result.add "&price="
-  result.add price.formatFloat(ffDecimal, 2)
-  result.add "&quantity="
-  result.add quantity.formatFloat(ffDecimal, 4)
-  result.add "&stopPrice="
-  result.add stopPrice.formatFloat(ffDecimal, 2)
-  result.add "&stopLimitPrice="
-  result.add stopLimitPrice.formatFloat(ffDecimal, 4)
-  result.add "&stopLimitTimeInForce="
-  result.add stopLimitTimeInForce
-  result.add "&side="
-  result.add $side
-  self.signQueryString"order/oco"
 
-#GET /api/v3/openOrders
-#Get all open orders on a symbol.
+proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float, stopLimitTimeInForce: string): string =
+  ## Create a new OCO order.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "price": price.formatFloat(ffDecimal, 6), "quantity": quantity.formatFloat(ffDecimal, 6), "stopPrice": stopPrice.formatFloat(ffDecimal, 6), "stopLimitPrice": stopLimitPrice.formatFloat(ffDecimal, 6), "stopLimitTimeInForce": stopLimitTimeInForce})
+  self.signQueryString"https://api.binance.com/api/v3/order/oco"
+
+
 proc openOrders*(self: Binance, symbol: string): string =
-  result = "symbol="
-  result.add symbol
-  self.signQueryString"openOrders"
+  ## Get all open orders on a symbol.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://api.binance.com/api/v3/openOrders"
 
 
-# User data streams
+# Wallet endpoints ############################################################
 
 
-proc userDataStream*(self: Binance): string =
+proc getAllCapital*(self: Binance): string =
+  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/config/getall")
+
+
+proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"coin": coin, "address": address, "amount": amount.formatFloat(ffDecimal, 8), "network": network})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/withdraw/apply")
+
+
+proc apiRestrictions*(self: Binance): string =
+  self.signQueryString("https://sapi.binance.com/sapi/v1/account/apiRestrictions")
+
+
+proc enableFastWithdraw*(self: Binance): string =
+  self.signQueryString("https://sapi.binance.com/sapi/v1/account/enableFastWithdrawSwitch")
+
+
+# Gift Cards endpoints ########################################################
+
+
+proc createCode*(self: Binance; token: string; quantity: float): string =
+  ## Create a new Gift Card via API.
+  result = ""
+  unrollEncodeQuery(result, {"token": token, "amount": quantity.formatFloat(ffDecimal, 8)})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/createCode")
+
+
+proc redeemCode*(self: Binance; code: string): string =
+  ## If you enter the wrong `code` 5 times within 24 hours, you will no longer be able to redeem any Binance `code` for 1 day.
+  result = ""
+  unrollEncodeQuery(result, {"code": code})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/redeemCode")
+
+
+proc verify*(self: Binance; referenceNo: string): string =
+  ## `referenceNo` is the number that `createCode` returns when successful, this is NOT the PIN code.
+  result = ""
+  unrollEncodeQuery(result, {"referenceNo": referenceNo})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/verify")
+
+
+# Futures endpoints ###########################################################
+
+
+proc pingFutures*(self: Binance): string {.inline.} =
+  ## Test connectivity to Binance, just a ping.
+  result = "https://fapi.binance.com/fapi/v1/ping"
+
+
+proc timeFutures*(self: Binance): string {.inline.} =
+  ## Test connectivity to the Rest API and get the current server time.
+  result = "https://fapi.binance.com/fapi/v1/time"
+
+
+proc exchangeInfoFutures*(self: Binance): string {.inline.} =
+  ## Current exchange trading rules and symbol information.
+  result = "https://fapi.binance.com/fapi/v1/exchangeInfo"
+
+
+proc orderBookFutures*(self: Binance; symbol: string): string {.inline.} =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/exchangeInfo")
+
+
+proc recentTradesFutures*(self: Binance; symbol: string): string {.inline.} =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/trades")
+
+
+proc historicalTradesFutures*(self: Binance; symbol: string; fromId: Positive): string {.inline.} =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/historicalTrades")
+
+
+proc aggTradesFutures*(self: Binance; symbol: string; fromId, startTime, endTime: Positive): string {.inline.} =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/aggTrades")
+
+
+proc aggTradesFutures*(self: Binance; symbol: string; fromId: Positive): string {.inline.} =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/aggTrades")
+
+
+proc klinesFutures*(self: Binance; symbol: string; period: Interval, startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "period": $period, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/klines")
+
+
+proc klinesFutures*(self: Binance; symbol: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/klines")
+
+
+proc continuousKlinesFutures*(self: Binance; pair: string; period: Interval, startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"pair": pair, "startTime": $startTime, "endTime": $endTime, "period": $period, "contractType": "PERPETUAL", "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/continuousKlines")
+
+
+proc continuousKlinesFutures*(self: Binance; pair: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"pair": pair, "period": $period, "contractType": "PERPETUAL", "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/continuousKlines")
+
+
+proc indexPriceKlinesFutures*(self: Binance; pair: string; period: Interval, startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"pair": pair, "startTime": $startTime, "endTime": $endTime, "period": $period, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/indexPriceKlines")
+
+
+proc indexPriceKlinesFutures*(self: Binance; pair: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"pair": pair, "period": $period, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/indexPriceKlines")
+
+
+proc markPriceKlinesFutures*(self: Binance; pair: string; period: Interval, startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"pair": pair, "startTime": $startTime, "endTime": $endTime, "period": $period, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/markPriceKlines")
+
+
+proc markPriceKlinesFutures*(self: Binance; pair: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"pair": pair, "period": $period, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/markPriceKlines")
+
+
+proc markPriceFutures*(self: Binance; symbol: string): string =
+  ## Mark Price AKA Premium Index.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/premiumIndex")
+
+
+proc fundingRateFutures*(self: Binance; symbol: string; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/fundingRate")
+
+
+proc fundingRateFutures*(self: Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/fundingRate")
+
+
+proc ticker24hrFutures*(self: Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/ticker/24hr")
+
+
+proc tickerPriceFutures*(self: Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/ticker/price")
+
+
+proc tickerPriceFutures*(self: Binance): string =
+  self.signQueryString("https://fapi.binance.com/fapi/v1/ticker/price")
+
+
+proc tickerBookTickerFutures*(self: Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/ticker/bookTicker")
+
+
+proc tickerBookTickerFutures*(self: Binance): string =
+  self.signQueryString("https://fapi.binance.com/fapi/v1/ticker/bookTicker")
+
+
+proc openInterestFutures*(self: Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/ticker/openInterest")
+
+
+proc openInterestHistFutures*(self: Binance; symbol: string; period: Interval; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "period": $period, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/openInterestHist")
+
+
+proc openInterestHistFutures*(self: Binance; symbol: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/openInterestHist")
+
+
+proc topLongShortAccountRatioFutures*(self: Binance; symbol: string; period: Interval; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "startTime": $startTime, "endTime": $endTime, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/topLongShortAccountRatio")
+
+
+proc topLongShortAccountRatioFutures*(self: Binance; symbol: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/topLongShortAccountRatio")
+
+
+proc topLongShortPositionRatioFutures*(self: Binance; symbol: string; period: Interval; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "startTime": $startTime, "endTime": $endTime, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/topLongShortPositionRatio")
+
+
+proc topLongShortPositionRatioFutures*(self: Binance; symbol: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/topLongShortPositionRatio")
+
+
+proc globalLongShortAccountRatioFutures*(self: Binance; symbol: string; period: Interval; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "startTime": $startTime, "endTime": $endTime, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/globalLongShortAccountRatio")
+
+
+proc globalLongShortAccountRatioFutures*(self: Binance; symbol: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/globalLongShortAccountRatio")
+
+
+proc takerlongshortRatioFutures*(self: Binance; symbol: string; period: Interval; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "startTime": $startTime, "endTime": $endTime, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/takerlongshortRatio")
+
+
+proc takerlongshortRatioFutures*(self: Binance; symbol: string; period: Interval): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "period": $period, "limit": "30"})
+  self.signQueryString("https://fapi.binance.com/futures/data/takerlongshortRatio")
+
+
+proc symbolInformationFutures*(self: Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString("https://fapi.binance.com/fapi/v1/indexInfo")
+
+
+proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType; timeInForce: TimeInForce, quantity, price, stopPrice, activationPrice, callbackRate: float; closePosition: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": $timeInForce, "closePosition": $closePosition, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice, "callbackRate": $callbackRate  })
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice, activationPrice: float): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType; price: float): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "price": $price})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc getOrderFutures*(self: var Binance; symbol: string; orderId: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc getOrderFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc cancelOrderFutures*(self: var Binance; symbol: string; orderId: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc cancelOrderFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc cancelAllOrdersFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/allOpenOrders"
+
+
+proc autoCancelAllOrdersFutures*(self: var Binance; symbol: string; countdownTime: Positive): string =
+  ## Auto-Cancel All Open Orders with a countdown.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "countdownTime": $countdownTime})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/countdownCancelAll"
+
+
+proc getAllOpenOrdersFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/openOrders"
+
+
+proc getAllOrdersFutures*(self: var Binance; symbol: string; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/allOrders"
+
+
+proc getAllOrdersFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/allOrders"
+
+
+proc balanceFutures*(self: var Binance): string =
+  self.signQueryString"https://fapi.binance.com/fapi/v2/balance"
+
+
+proc accountFutures*(self: var Binance): string =
+  self.signQueryString"https://fapi.binance.com/fapi/v2/account"
+
+
+proc leverageFutures*(self: var Binance; symbol: string; leverage: 1 .. 125): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "leverage": $leverage})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/leverage"
+
+
+proc marginTypeFutures*(self: var Binance; symbol: string; isolated: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "marginType": if isolated: "ISOLATED" else: "CROSSED"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/marginType"
+
+
+proc positionRiskFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://fapi.binance.com/fapi/v2/positionRisk"
+
+
+proc userTradesFutures*(self: var Binance; symbol: string; startTime, endTime: Positive): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/userTrades"
+
+
+proc userTradesFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/userTrades"
+
+
+proc incomeFutures*(self: var Binance; symbol: string; startTime, endTime: Positive; incomeType: IncomeType): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "incomeType": $incomeType, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/income"
+
+
+proc incomeFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/income"
+
+
+proc commissionRateFutures*(self: var Binance; symbol: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/commissionRate"
+
+
+# User data streams ###########################################################
+
+
+proc userDataStream*(self: Binance): string {.inline.} =
   ## Start a new user data stream.
   ## * `POST` to Open a new user data stream.
   ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
   ## * `GET` to Keep Alive an existing user data stream.
-  result = binanceAPIUrl & "/api/v3/userDataStream"
+  result = "https://api.binance.com/api/v3/userDataStream"
 
 
-proc getProducts*(self: Binance): string =
-  ## Undocumented API endpoint ?, no auth required ?.
-  "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
-
-
-proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Positive): MarketCap =
-  ## Get top market cap trading pairs, ordered from big to small, filtered by `stablecoin`, maximum of `limit`.
-  ## * This needs to iterate all pairs sadly, because the API sends it unordered, >300 pairs for any `stablecoin`.
-  assert stablecoin.len > 0, "stablecoin must not be empty string"
-  let data: JsonNode = self.request(self.getProducts(), HttpGet)["data"]
-  result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
-  for coin in data:
-    let pair: string = coin["s"].getStr
-    if coin["q"].getStr == stablecoin and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
-      result.add (marketCap: int(coin["cs"].getInt.float * coin["c"].getStr.parseFloat), ticker: pair)
-  result.sort Descending
-  result.setLen limit
-
-
-proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h: float] =
-  ## Get 24 hours Highest price and Lowest price for a symbol.
-  assert symbolTicker.len > 0, "symbolTicker must not be empty string"
-  let temp = self.request(self.ticker24h(symbolTicker), HttpGet)
-  result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
-
-
-proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int] = 30_000): int =
-  ## Get a "dynamic" sleep time integer for use with `sleep` and loops.
-  ## * If more volatility then less sleep time, and viceversa.
-  assert symbolTicker.len > 0, "symbolTicker must not be empty string"
-  let temp = parseJson(self.request(self.ticker24h(symbolTicker), HttpGet))["priceChangePercent"].getStr.parseFloat
-  result = int(baseSleep / (if temp > 0.0: temp else: 1.0))
-  if result > 100_000: result = 100_000
-
-
-proc prepareTransaction*(self: var Binance, ticker: string): TradingInfo =
-  var
-    tp = self.request(self.tickerPrice(ticker), HttpGet)
-    data = parseJson(self.exchangeInfo(symbols = @[ticker], fromMemory = true))
-    current_amount = self.getStableCoinsInWallet()[data["quoteAsset"].getStr]
-    baseAsset  = data["baseAsset"].getStr
-    quoteAsset = data["quoteAsset"].getStr
-    priceToBuy = tp["price"].getStr.parseFloat
-
-  let min_amount = data["filters"][3]["minNotional"].getStr.parseFloat
-
-  if current_amount * 0.75 > min_amount:
-    current_amount *= 0.75
-    var quantity = if (current_amount / priceToBuy).formatFloat(ffDecimal, 4) == "0.0000": 0.0001 else: current_amount / priceToBuy
-    result = (baseAsset, quoteAsset, priceToBuy, quantity, current_amount, PREPARED)
-  else:
-    result = (baseAsset, quoteAsset, priceToBuy, current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)
-
-
-proc prepareTransactions*(self: var Binance, coinType: CoinType):seq[TradingInfo] =
-  var
-    symbolToBuy:string
-    current_amount = 0.0
-    virtual_current_amount = -1.0
-    myWallet = self.userWallet().spot
-    exchangeData = parseJson(self.exchangeInfo(fromMemory = true))["symbols"]
-    marketDetails: Table[string, MarketCap]
-    market: MarketCap
-    data: MarketCap
-    coin: string
-    balance: tuple[free: float, locked: float]
-    checked_assets: seq[string]
-
-  #produces possible trading operations for every coin in your wallet
-  for p in pairs(myWallet):
-    (coin, balance) = p
-
-    if coinType == STABLE_COIN:
-      if coin in stableCoins:
-        data = self.getTopMarketCapPairs(coin, 5)
-    else:
-      data = self.getTopMarketCapPairs(coin, 5)
-
-    for d in data:
-      if (0,"") != d:
-        marketDetails[coin] = data
-
-  # find a price and a minimal amount required for trade
-  for assets in pairs(marketDetails):
-    (coin, market) = assets
-
-    for m in marketDetails[coin]:
-      var tp = self.request(self.tickerPrice(m[1]), HttpGet)
-      var priceToBuy = tp["price"].getStr.parseFloat
-
-      for asset in exchangeData:
-        if asset["symbol"].getStr notin checked_assets:
-          if asset["symbol"].getStr == tp["symbol"].getStr:
-            checked_assets.add asset["symbol"].getStr
-            symbolToBuy = asset["quoteAsset"].getStr
-            let min_amount = asset["filters"][3]["minNotional"].getStr.parseFloat
-            # let stepSize   = asset["filters"][2]["stepSize"].getStr.parseFloat
-
-            if virtual_current_amount < 0:
-              current_amount = self.getStableCoinsInWallet()[symbolToBuy]
-              virtual_current_amount = current_amount
-
-            if virtual_current_amount * 0.75 > min_amount:
-              current_amount *= 0.75
-              virtual_current_amount -= current_amount
-              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4), current_amount / priceToBuy, current_amount, PREPARED)
-            else:
-              result.add (asset["baseAsset"].getStr, symbolToBuy, round(priceToBuy,4),current_amount / priceToBuy, current_amount, WITHOUT_FUNDS)
-
-            virtual_current_amount = current_amount
-            break
-
-#      virtual_current_amount = -1
+# Misc utils ##################################################################
 
 
 proc getBnb*(self: var Binance): float =
@@ -856,7 +817,7 @@ proc getBnb*(self: var Binance): float =
 
 proc getBnbPrice*(self: Binance): string {.inline.} =
   ## BNB price in USDT, useful for commision calc.
-  result = static(binanceAPIUrl & "/api/v3/ticker/price?symbol=BNBUSDT")
+  result = "https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT"
 
 
 proc checkEarnings*(self: var Binance; coin: string): bool =
@@ -887,183 +848,72 @@ proc ma50*(self: Binance; ticker: string): float =
     result = sum / 50
 
 
-# Wallet endpoints
+proc getDynamicSleep*(self: Binance; symbolTicker: string; baseSleep: static[int] = 30_000): int =
+  ## Get a "dynamic" sleep time integer for use with `sleep` and loops.
+  ## * If more volatility then less sleep time, and viceversa.
+  assert symbolTicker.len > 0, "symbolTicker must not be empty string"
+  let temp = self.request(self.ticker24h(symbolTicker), HttpGet)["priceChangePercent"].getStr.parseFloat
+  result = int(baseSleep / (if temp > 0.0: temp else: 1.0))
+  if result > 120_000: result = 120_000
 
 
-proc getAllCapital*(self: Binance): string =
-  self.signQueryString("capital/config/getall", sapi = true)
+proc getProducts*(self: Binance): string {.inline.} =
+  ## Undocumented API endpoint ?, no auth required ?.
+  result = "https://www.binance.com/exchange-api/v2/public/asset-service/product/get-products"
 
 
-proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
-  result.add "coin="
-  result.add coin
-  result.add "&address="
-  result.add address
-  result.add "&amount="
-  result.add amount.formatFloat(ffDecimal, 4)
-  result.add "&network="
-  result.add network
-  self.signQueryString("capital/withdraw/apply", sapi = true)
+proc getTopMarketCapPairs*(self: Binance; stablecoin = "USDT"; limit = 100.Positive): seq[tuple[marketCap: int, ticker: string]] =
+  ## Get top market cap trading pairs, ordered from big to small, filtered by `stablecoin`, maximum of `limit`.
+  ## * This needs to iterate all pairs sadly, because the API sends it unordered, >300 pairs for any `stablecoin`.
+  assert stablecoin.len > 0, "stablecoin must not be empty string"
+  let data: JsonNode = self.request(self.getProducts(), HttpGet)["data"]
+  result = newSeqOfCap[tuple[marketCap: int, ticker: string]](data.len)
+  for coin in data:
+    let pair: string = coin["s"].getStr
+    if coin["q"].getStr == stablecoin and not coin["cs"].isNil and not coin["c"].isNil and coin["cs"].getInt > 0:
+      result.add (marketCap: int(coin["cs"].getInt.float * coin["c"].getStr.parseFloat), ticker: pair)
+  result.sort Descending
+  result.setLen limit
 
 
-proc apiRestrictions*(self: Binance): string =
-  self.signQueryString("account/apiRestrictions", sapi = true)
+proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h: float] =
+  ## Get 24 hours Highest price and Lowest price for a symbol.
+  assert symbolTicker.len > 0, "symbolTicker must not be empty string"
+  let temp = self.request(self.ticker24h(symbolTicker), HttpGet)
+  result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
 
 
-proc enableFastWithdraw*(self: Binance): string =
-  self.signQueryString("account/enableFastWithdrawSwitch", sapi = true)
+template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static[float] = NaN) =
+  ## Utility template to check if a float is valid, because float sux.
+  when not defined(release):
+    doAssert not floaty.isNaN, "Value must not be  NaN"
+    doAssert floaty != +Inf,   "Value must not be +Inf"
+    doAssert floaty != -Inf,   "Value must not be -Inf"
+    when not lowest.isNaN:  doAssert floaty >= lowest,  "Value must be >= " & $lowest
+    when not highest.isNaN: doAssert floaty <= highest, "Value must be <= " & $highest
 
 
-# Margin Account/Trade endpoints
-
-
-proc marginLevel*(self: Binance): float =
-  self.request(self.accountData(MARGIN_ACCOUNT), HttpGet)["marginLevel"].getStr.parseFloat
-
-
-proc priceIndex*(self: Binance): string =
-  result = binanceAPIUrl & "/sapi/v1/margin/priceIndex?symbol=" & self.marginAsset
-
-
-proc totalDebt*(self: Binance): float =
-  ## price * debt
-  self.request(self.accountData(MARGIN_ACCOUNT), HttpGet)["totalLiabilityOfBtc"].getStr.parseFloat * self.request(self.priceIndex, HttpGet)["price"].getStr.parseFloat
-
-
-
-proc transfer*(self: Binance, asset: string, amount: float, tipe: AssetTransfer): string =
-  assert tipe in {SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT, SPOT_TO_MARGIN_ISOLATED, MARGIN_ISOLATED_TO_SPOT}, "Transfer can only be made between spot and margin cross accounts."
-  assert amount > 0, "Amount must be greater than 0"
-  if tipe == MARGIN_CROSS_TO_SPOT:
-    doAssert amount > self.totalDebt, "Amount must be 2 times greater than total debt"
-
-  var url: string
-
-  result.add "asset="
-  result.add asset
-  result.add "&amount="
-  result.add $amount
-
-  if tipe in { SPOT_TO_MARGIN_CROSS, MARGIN_CROSS_TO_SPOT }:
-    url = "margin/transfer"
-    result.add "&type="
-    result.add if tipe == SPOT_TO_MARGIN_CROSS: "1" else: "2"
-  else:
-    url = "margin/isolated/transfer"
-    result.add "&symbol="
-    result.add self.marginAsset
-    result.add "&transFrom="
-    result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "SPOT" else: "ISOLATED_MARGIN"
-    result.add "&transTo="
-    result.add if tipe == SPOT_TO_MARGIN_ISOLATED: "ISOLATED_MARGIN" else: "SPOT"
-
-  self.signQueryString(url, sapi = true)
-
-proc borrow*(self: Binance, asset: string, amount: float, accountType: AccountType): string =
-  result.add "asset="
-  result.add asset
-  result.add "&amount="
-  result.add $amount
-
-  if accountType == ISOLATED_ACCOUNT:
-    result.add "&isIsolated=TRUE"
-    result.add "&symbol="
-    result.add asset & "USDT"
-
-  self.signQueryString("margin/loan", sapi = true)
-
-proc repay*(self: Binance, asset: string, amount: float, accountType: AccountType): string =
-  result.add "asset="
-  result.add asset
-  result.add "&amount="
-  result.add $amount
-
-  if accountType == ISOLATED_ACCOUNT:
-    result.add "&isIsolated=TRUE"
-    result.add "&symbol="
-    result.add asset & "USDT"
-
-  self.signQueryString("margin/repay", sapi = true)
-
-proc maxBorrowable*(self: Binance, asset: string, accountType: AccountType): string =
-  result.add "asset="
-  result.add asset
-
-  if accountType == ISOLATED_ACCOUNT:
-    result.add "&isIsolated=TRUE"
-    result.add "&symbol="
-    result.add self.marginAsset
-
-  self.signQueryString("margin/maxBorrowable", sapi = true)
-
-
-proc maxTransferable*(self: Binance, asset: string, accountType: AccountType): string =
-  result.add "asset="
-  result.add asset
-
-  if accountType == ISOLATED_ACCOUNT:
-    result.add "&isIsolated=TRUE"
-    result.add "&symbol="
-    result.add self.marginAsset
-
-  self.signQueryString("margin/maxTransferable", sapi = true)
-
-
-# Gift Cards endpoints.
-
-
-proc createCode*(self: Binance; token: string; quantity: float): string =
-  ## Create a new Gift Card via API.
-  result = "token="
-  result.add token
-  result.add "&amount=" # amount instead of quantity.
-  result.add quantity.formatFloat(ffDecimal, 8)
-  self.signQueryString("giftcard/createCode", sapi = true)
-
-
-proc redeemCode*(self: Binance; code: string): string =
-  ## If you enter the wrong code 5 times within 24 hours, you will no longer be able to redeem any Binance Code for a day.
-  result = "code=" # token instead of symbol.
-  result.add code
-  self.signQueryString("giftcard/redeemCode", sapi = true)
-
-
-proc verify*(self: Binance; referenceNo: string): string =
-  ## `referenceNo` is the number that `createCode` returns when successful, this is NOT the PIN code.
-  result = "referenceNo="
-  result.add referenceNo
-  self.signQueryString("giftcard/verify", sapi = true)
-
-
-# Futures endpoints.
-
-
-# proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price, stopPrice, activationPrice, callbackRate: float): string =
-#   self.prechecks = self.verifyFiltersRule(symbol, price, quantity, tipe)
-#   result = "symbol="
-#   result.add symbol
-#   result.add "&side="
-#   result.add $side
-#   result.add "&type="
-#   result.add $tipe
-#   result.add "&quantity="
-#   result.add quantity.formatFloat(ffDecimal, 6)
-#   result.add "&stopPrice="
-#   result.add $stopPrice
-#   result.add "&activationPrice="
-#   result.add $activationPrice
-#   result.add "&callbackRate="
-#   result.add $callbackRate
-
-
-
-#   if tipe == ORDER_TYPE_LIMIT:
-#     result.add "&timeInForce="
-#     result.add timeInForce
-#     result.add "&price="
-#     result.add price.formatFloat(ffDecimal, 2)
-
-#   self.signQueryString"order"
+template truncate*(number: float): float =
+  ## Truncate a float, this is a workaround, because `round` and `formatFloat` are fixed precision.
+  var dotFound = false
+  var s = newStringOfCap(8)
+  for c in number.formatFloat(ffDecimal, 6):
+    case c
+    of '-': s.add '-'
+    of '+': discard
+    of '.':
+      s.add '.'
+      dotFound = true
+    of '0' .. '9':
+      if dotFound:
+        if c == '0':
+          s.add c
+        else:
+          s.add c
+          break
+      else: s.add c
+    else: discard
+  parseFloat(s)
 
 
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
