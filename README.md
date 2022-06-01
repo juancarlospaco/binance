@@ -13,7 +13,6 @@
 
 # Requisites
 
-- Access to SMS and/or email for 2 Factor Authentication, for initial setup.
 - Valid API Key and API Secret, with all permissions, get it for free at https://www.binance.com/en/my/settings/api-management
 
 ![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/api_key_web.png)
@@ -37,6 +36,13 @@ echo client.request(preparedEndpoint, HttpPost)
 ```
 
 
+# Documentation
+
+- https://juancarlospaco.github.io/binance
+- By default is using the real Binance API.
+- Spot and Futures API are supported only.
+
+
 # TradingBot
 
 - How to create a TradingBot ?.
@@ -44,19 +50,6 @@ echo client.request(preparedEndpoint, HttpPost)
 TradingBot example: https://github.com/juancarlospaco/binance/blob/nim/examples/newcoin.nim
 
 Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/examples/giftcardbot.nim
-
-
-# Documentation
-
-- https://juancarlospaco.github.io/binance
-
-
-# TestNet Vs Prod
-
-**BY DEFAULT IS USING REAL BINANCE API!.**
-
-- TestNet (Fake Binance, for testing) ` -d:binanceAPIUrl="https://testnet.binance.vision" `.
-- Production (Real Binance, for prod) ` -d:binanceAPIUrl="https://api.binance.com" `.
 
 
 # More
