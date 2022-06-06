@@ -175,3 +175,4 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@Walter-Santillan](https://github.com/Walter-Santillan '2022-03-21')
 :star: [@kamilchm](https://github.com/kamilchm '2022-03-23')
 :star: [@Parzivalcen](https://github.com/Parzivalcen '2022-04-06')
+:star: [@hugosenari](https://github.com/hugosenari '2022-05-28')	
