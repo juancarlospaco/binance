@@ -1,4 +1,4 @@
-import std/[times, httpclient, httpcore, json, strutils, math, tables, os, algorithm, macros, net], binance/binance_sha256
+import std/[times, httpclient, httpcore, json, strutils, tables, os, algorithm, macros], binance/binance_sha256
 
 
 type
@@ -840,16 +840,6 @@ proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h
   assert symbolTicker.len > 0, "symbolTicker must not be empty string"
   let temp = self.request(self.ticker24h(symbolTicker), HttpGet)
   result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
-
-
-template checkFloat*(floaty: float; lowest: static[float] = NaN; highest: static[float] = NaN) =
-  ## Utility template to check if a float is valid, because float sux.
-  when not defined(release):
-    doAssert not floaty.isNaN, "Value must not be  NaN"
-    doAssert floaty != +Inf,   "Value must not be +Inf"
-    doAssert floaty != -Inf,   "Value must not be -Inf"
-    when not lowest.isNaN:  doAssert floaty >= lowest,  "Value must be >= " & $lowest
-    when not highest.isNaN: doAssert floaty <= highest, "Value must be <= " & $highest
 
 
 template truncate*(number: float): float =
