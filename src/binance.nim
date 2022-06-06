@@ -1,14 +1,10 @@
-import std/[times, httpclient, httpcore, json, strutils, math, tables, os, algorithm, macros], binance/binance_sha256
+import std/[times, httpclient, httpcore, json, strutils, math, tables, os, algorithm, macros, net], binance/binance_sha256
 
 
 type
-  Balances = object
-    spot*: Table[string, tuple[free, locked: float]]
-
   Binance* = object  ## Binance API Client.
     apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
     client: HttpClient
-    balances: Balances
 
   Side* = enum
     SIDE_BUY  = "BUY"
@@ -131,38 +127,6 @@ template signQueryString(self: Binance; endpoint: string) =
   result = endpoint & '?' & result
 
 
-proc accountData*(self: Binance): string =
-  ## Get the current account information
-  self.signQueryString("https://api.binance.com/api/v3/account")
-
-
-proc avgPrice*(self: Binance, symbol: string): string =
-  ## Current average price for a symbol.
-  result = "https://api.binance.com/api/v3/avgPrice"
-  unrollEncodeQuery(result, {"symbol": symbol})
-
-
-#Get user wallet assets
-proc updateUserWallet(self: var Binance) =
-  let wallet = self.request(self.accountData(), HttpGet)
-  var key: string
-  self.balances.spot = initTable[string, tuple[free, locked: float]]()
-  key = "balances"
-
-  let wallet_data = wallet[key]
-  for asset in wallet_data:
-    # Hide 0 balances
-    if asset{"free"}.getStr != "":
-      if asset{"free"}.getStr.parseFloat != 0.0:
-        self.balances.spot[asset["asset"].getStr] = (asset["free"].getStr.parseFloat, asset["locked"].getStr.parseFloat)
-    else:
-      var data:seq[tuple[asset: string, free, locked, interest, netAsset, borrowed: float]]
-      for a in ["baseAsset", "quoteAsset"]:
-        var item = asset[a]
-        data.add (item["asset"].getStr, item["free"].getStr.parseFloat, item["locked"].getStr.parseFloat, item["interest"].getStr.parseFloat, item["netAsset"].getStr.parseFloat, item["borrowed"].getStr.parseFloat)
-      self.balances.isolated[asset["symbol"].getStr] = data
-
-
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len    > 64, "apiKey must be a string of >64 chars."
@@ -171,24 +135,28 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   client.headers.add "X-MBX-APIKEY", apiKey
   client.headers.add "DNT", "1"
   result = Binance(apiSecret: apiSecret, client: client)
-  # user wallet is cached in memory at runtime.
-  result.updateUserWallet
 
 
-proc userWallet*(self: var Binance, update: bool = false): Balances =
-  ## Retrieves current or updated wallet info
-  if update: self.updateUserWallet()
-  self.balances
+proc accountData*(self: Binance): string =
+  ## Get the current account information
+  self.signQueryString("https://api.binance.com/api/v3/account")
 
 
-proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
-  var myWallet = self.userWallet(update = true).spot
-  for coin in myWallet.keys:
-    if coin in stableCoins:
-      result[coin] = myWallet[coin].free
+proc getWallet*(self: Binance; stablecoinsOnly = false): Table[string, float] =
+  ## Get user wallet assets. To save memory and increase performance, only get the "free" balance, "locked" balance is ignored because is not usable whatsoever.
+  for it in self.request(self.accountData(), HttpGet):
+    if it.hasKey"free" and it.hasKey"asset":  # Ignore locked balances.
+      if it["free"].getStr.parseFloat > 0.0:  # Ignore "0.0"  balances.
+        result[it["asset"].getStr] = it["free"].getStr.parseFloat
 
 
 # Market Data #################################################################
+
+
+proc avgPrice*(self: Binance, symbol: string): string =
+  ## Current average price for a symbol.
+  result = "https://api.binance.com/api/v3/avgPrice"
+  unrollEncodeQuery(result, {"symbol": symbol})
 
 
 proc orderBook*(self: Binance; symbol: string): string =
@@ -810,23 +778,14 @@ proc verify*(self: Binance; referenceNo: string): string =
 # Misc utils ##################################################################
 
 
-proc getBnb*(self: var Binance): float =
+template getBnb*(self: Binance): float =
   ## Get BNB in user wallet, this is useful for Commisions.
-  try: self.userWallet(update = true).spot["BNB"].free except Exception: 0.0
+  try: self.getWallet()["BNB"] except Exception: 0.0
 
 
-proc getBnbPrice*(self: Binance): string {.inline.} =
+template getBnbPrice*(self: Binance): string =
   ## BNB price in USDT, useful for commision calc.
-  result = "https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT"
-
-
-proc checkEarnings*(self: var Binance; coin: string): bool =
-  ## Check if we made some earnings.
-  assert coin.len > 0, "coin must not be empty string"
-  let
-    cache = self.userWallet().spot
-    afterTrade = self.userWallet(update = true).spot
-  result = afterTrade[coin].free > cache[coin].free
+  "https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT"
 
 
 template donateToAddress*(self: Binance; address: string; amount = 0.0000095; coin = "BTC"): JsonNode =
