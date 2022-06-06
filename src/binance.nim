@@ -158,6 +158,10 @@ proc getBalance*(self: Binance; coin: string): float =
       return it["free"].getStr.parseFloat
 
 
+template getPrice*(self: Binance; ticker: string): float =
+  self.request(self.tickerPrice(ticker), HttpGet)["price"].getStr.parseFloat
+
+
 # Market Data #################################################################
 
 
