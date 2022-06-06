@@ -6,7 +6,7 @@ let client = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
 
 
 #orderTest
-var preparedEndpoint = client.orderTest(SIDE_BUY,ORDER_TYPE_LIMIT, ORDER_RESP_TYPE_FULL, $TIME_IN_FORCE_GTC, "1", "BTCUSDT", 0.1, 10_000.00)
+var preparedEndpoint = client.orderTest(SIDE_BUY, ORDER_TYPE_LIMIT, ORDER_RESP_TYPE_FULL, $TIME_IN_FORCE_GTC, "1", "BTCUSDT", 0.1, 10_000.00)
 
 echo "\nPOST -> /api/v3/order/test"
 echo client.request(preparedEndpoint, HttpPost)
