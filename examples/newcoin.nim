@@ -6,7 +6,7 @@ proc main() =
 
   let
     client = newBinance(getEnv"BINANCE_API_KEY", getEnv"BINANCE_API_SECRET")
-    exchangeData = parseJson(client.exchangeInfo(fromMemory = true))["symbols"]
+    exchangeData = parseJson(client.exchangeInfo())["symbols"]
 
   var
     i = 0
