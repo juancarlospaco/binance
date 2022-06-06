@@ -150,6 +150,14 @@ proc getWallet*(self: Binance; stablecoinsOnly = false): Table[string, float] =
         result[it["asset"].getStr] = it["free"].getStr.parseFloat
 
 
+proc getBalance*(self: Binance; coin: string): float =
+  ## Get user wallet balance of 1 specific coin, its faster than `getWallet`.
+  for it in self.request(self.accountData(), HttpGet):
+    if it.hasKey"free" and it.hasKey"asset":
+      if it["asset"].getStr == coin and it["free"].getStr.parseFloat > 0.0:
+        return it["free"].getStr.parseFloat
+
+
 # Market Data #################################################################
 
 
