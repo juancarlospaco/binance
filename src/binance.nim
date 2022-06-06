@@ -188,19 +188,6 @@ proc getStableCoinsInWallet*(self: var Binance): Table[string, float] =
       result[coin] = myWallet[coin].free
 
 
-# Generic endpoints ###########################################################
-
-
-proc ping*(self: Binance): string {.inline.} =
-  ## Test connectivity to Binance, just a ping.
-  result = "https://api.binance.com/api/v3/ping"
-
-
-proc time*(self: Binance): string {.inline.} =
-  ## Get current Binance API server time.
-  result = "https://api.binance.com/api/v3/time"
-
-
 # Market Data #################################################################
 
 
@@ -321,7 +308,7 @@ proc orderBookTicker*(self: Binance): string {.inline.} =
   result = "https://api.binance.com/api/v3/ticker/bookTicker"
 
 
-# Account Trade ###############################################################
+# Spot Trading ################################################################
 
 
 proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOrderId = 1.Positive): string =
@@ -401,51 +388,6 @@ proc openOrders*(self: Binance, symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://api.binance.com/api/v3/openOrders"
-
-
-# Wallet endpoints ############################################################
-
-
-proc getAllCapital*(self: Binance): string =
-  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/config/getall")
-
-
-proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
-  result = ""
-  unrollEncodeQuery(result, {"coin": coin, "address": address, "amount": amount.formatFloat(ffDecimal, 8), "network": network})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/withdraw/apply")
-
-
-proc apiRestrictions*(self: Binance): string =
-  self.signQueryString("https://sapi.binance.com/sapi/v1/account/apiRestrictions")
-
-
-proc enableFastWithdraw*(self: Binance): string =
-  self.signQueryString("https://sapi.binance.com/sapi/v1/account/enableFastWithdrawSwitch")
-
-
-# Gift Cards endpoints ########################################################
-
-
-proc createCode*(self: Binance; token: string; quantity: float): string =
-  ## Create a new Gift Card via API.
-  result = ""
-  unrollEncodeQuery(result, {"token": token, "amount": quantity.formatFloat(ffDecimal, 8)})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/createCode")
-
-
-proc redeemCode*(self: Binance; code: string): string =
-  ## If you enter the wrong `code` 5 times within 24 hours, you will no longer be able to redeem any Binance `code` for 1 day.
-  result = ""
-  unrollEncodeQuery(result, {"code": code})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/redeemCode")
-
-
-proc verify*(self: Binance; referenceNo: string): string =
-  ## `referenceNo` is the number that `createCode` returns when successful, this is NOT the PIN code.
-  result = ""
-  unrollEncodeQuery(result, {"referenceNo": referenceNo})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/verify")
 
 
 # Futures endpoints ###########################################################
@@ -805,6 +747,64 @@ proc userDataStream*(self: Binance): string {.inline.} =
   ## * `DELETE` to Delete an existing user data stream. Auto-closes at 60 minutes idle.
   ## * `GET` to Keep Alive an existing user data stream.
   result = "https://api.binance.com/api/v3/userDataStream"
+
+
+# Generic endpoints ###########################################################
+
+
+proc ping*(self: Binance): string {.inline.} =
+  ## Test connectivity to Binance, just a ping.
+  result = "https://api.binance.com/api/v3/ping"
+
+
+proc time*(self: Binance): string {.inline.} =
+  ## Get current Binance API server time.
+  result = "https://api.binance.com/api/v3/time"
+
+
+# Wallet endpoints ############################################################
+
+
+proc getAllCapital*(self: Binance): string =
+  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/config/getall")
+
+
+proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
+  result = ""
+  unrollEncodeQuery(result, {"coin": coin, "address": address, "amount": amount.formatFloat(ffDecimal, 8), "network": network})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/withdraw/apply")
+
+
+proc apiRestrictions*(self: Binance): string =
+  self.signQueryString("https://sapi.binance.com/sapi/v1/account/apiRestrictions")
+
+
+proc enableFastWithdraw*(self: Binance): string =
+  self.signQueryString("https://sapi.binance.com/sapi/v1/account/enableFastWithdrawSwitch")
+
+
+# Gift Cards endpoints ########################################################
+
+
+proc createCode*(self: Binance; token: string; quantity: float): string =
+  ## Create a new Gift Card via API.
+  result = ""
+  unrollEncodeQuery(result, {"token": token, "amount": quantity.formatFloat(ffDecimal, 8)})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/createCode")
+
+
+proc redeemCode*(self: Binance; code: string): string =
+  ## If you enter the wrong `code` 5 times within 24 hours, you will no longer be able to redeem any Binance `code` for 1 day.
+  result = ""
+  unrollEncodeQuery(result, {"code": code})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/redeemCode")
+
+
+proc verify*(self: Binance; referenceNo: string): string =
+  ## `referenceNo` is the number that `createCode` returns when successful, this is NOT the PIN code.
+  result = ""
+  unrollEncodeQuery(result, {"referenceNo": referenceNo})
+  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/verify")
 
 
 # Misc utils ##################################################################
