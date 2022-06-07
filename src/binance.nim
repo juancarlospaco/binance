@@ -129,8 +129,8 @@ template signQueryString(self: Binance; endpoint: string) =
 
 proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
-  assert apiKey.len    > 64, "apiKey must be a string of >64 chars."
-  assert apiSecret.len > 64, "apiSecret must be a string of >64 chars."
+  assert apiKey.len    >= 64, "apiKey must be a string of >= 64 chars."
+  assert apiSecret.len >= 64, "apiSecret must be a string of >= 64 chars."
   var client = newHttpClient(timeout = 999_999)
   client.headers.add "X-MBX-APIKEY", apiKey
   client.headers.add "DNT", "1"
