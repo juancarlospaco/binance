@@ -73,18 +73,18 @@ type
 const stableCoins* = ["USDT", "BUSD", "USDC", "DAI", "USDP"]
 
 
-macro unrollEncodeQuery*(target: var string; args: openArray[(string, auto)]; escape: typed = nil; quote: static[bool] = false) =
+macro unrollEncodeQuery*(target: var string; args: openArray[(string, auto)]; charL: static[char] = '&'; charR: static[char] = '\0') =
   doAssert args.len > 0, "Iterable must not be empty, because theres nothing to unroll"
   result = newStmtList()
+  if charL != '\0': result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit(charL))
   for i, item in args:
     let key: string = item[1][0].strVal
     doAssert key.len > 0, "Key must not be empty string."
-    if len(target) > 0: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('&'))
+    if i > 0: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('&'))
     for c in key: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), c.newLit)
     result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('='))
-    if quote: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('"'))
-    result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), if escape != nil: nnkCall.newTree(escape, item[1][1]) else: item[1][1])
-    if quote: result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit('"'))
+    result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), item[1][1])
+  if charR != '\0': result.add nnkCall.newTree(nnkDotExpr.newTree(target, newIdentNode"add"), newLit(charR))
 
 
 converter interval_to_milliseconds(interval: Interval): int =
@@ -121,9 +121,9 @@ proc request*(self: Binance; endpoint: string; httpMethod: static[HttpMethod]): 
 
 template signQueryString(self: Binance; endpoint: string) =
   ## Sign the query string for Binance API, reusing the same string.
-  unrollEncodeQuery(result, {"recvWindow": "9999", "timestamp": $(now().utc.toTime.toUnix * 1_000)})
+  unrollEncodeQuery(result, {"recvWindow": "60000", "timestamp": $(now().utc.toTime.toUnix * 1_000)})
   let signature: string = sha256.hmac(self.apiSecret, result)
-  unrollEncodeQuery(result, {"signature": signature})
+  unrollEncodeQuery(result, {"signature": signature})  # This is special cased, starts with '&'.
   result = endpoint & '?' & result
 
 
@@ -144,18 +144,16 @@ proc accountData*(self: Binance): string =
 
 proc getWallet*(self: Binance; stablecoinsOnly = false): Table[string, float] =
   ## Get user wallet assets. To save memory and increase performance, only get the "free" balance, "locked" balance is ignored because is not usable whatsoever.
-  for it in self.request(self.accountData(), HttpGet):
-    if it.hasKey"free" and it.hasKey"asset":  # Ignore locked balances.
-      let coinAmount: float = it["free"].getStr.parseFloat
-      if coinAmount > 0.0:  # Ignore "0.0"  balances.
-        result[it["asset"].getStr] = coinAmount
+  for it in self.request(self.accountData(), HttpGet)["balances"]:
+    let coinAmount: string = it["free"].getStr
+    if coinAmount != "0.00000000":  # Ignore "0.00000000" balances.
+      result[it["asset"].getStr] = coinAmount.parseFloat  # Only parseFloat the needed ones.
 
 
 proc getBalance*(self: Binance; coin: string): float =
   ## Get user wallet balance of 1 specific coin, its faster than `getWallet`.
-  for it in self.request(self.accountData(), HttpGet):
-    if it.hasKey"free" and it.hasKey"asset" and it["asset"].getStr == coin:
-      return it["free"].getStr.parseFloat
+  for it in self.request(self.accountData(), HttpGet)["balances"]:
+    if it["asset"].getStr == coin: return it["free"].getStr.parseFloat
 
 
 template getPrice*(self: Binance; ticker: string): float =
@@ -168,62 +166,62 @@ template getPrice*(self: Binance; ticker: string): float =
 proc avgPrice*(self: Binance, symbol: string): string =
   ## Current average price for a symbol.
   result = "https://api.binance.com/api/v3/avgPrice"
-  unrollEncodeQuery(result, {"symbol": symbol})
+  unrollEncodeQuery(result, {"symbol": symbol}, charL = '?')
 
 
 proc orderBook*(self: Binance; symbol: string): string =
   ## Order book depth.
   result = "https://api.binance.com/api/v3/depth"
-  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"}, charL = '?')
 
 
 proc recentTrades*(self: Binance; symbol: string): string =
   ## Get a list of recent Trades.
   result = "https://api.binance.com/api/v3/trades"
-  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"}, charL = '?')
 
 
 proc olderTrades*(self: Binance; symbol: string; fromId: Positive): string =
   ## Old historical Trades.
   result = "https://api.binance.com/api/v3/historicalTrades"
-  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"}, charL = '?')
 
 
 proc olderTrades*(self: Binance; symbol: string): string =
   ## Old historical Trades.
   result = "https://api.binance.com/api/v3/historicalTrades"
-  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"}, charL = '?')
 
 
 proc aggrTrades*(self: Binance; symbol: string; fromId, startTime, endTime: Positive): string =
   ## Aggregated Trades list.
   assert endTime - startTime < 24 * 36000000, "startTime/endTime must be 2 integers representing a time interval smaller than 24 hours."
   result = "https://api.binance.com/api/v3/aggTrades"
-  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "startTime": $startTime, "endTime": $endTime, "limit": "500"}, charL = '?')
 
 
 proc aggrTrades*(self: Binance; symbol: string; fromId: Positive): string =
   ## Aggregated Trades list.
   result = "https://api.binance.com/api/v3/aggTrades"
-  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "fromId": $fromId, "limit": "500"}, charL = '?')
 
 
 proc aggrTrades*(self: Binance; symbol: string): string =
   ## Aggregated Trades list.
   result = "https://api.binance.com/api/v3/aggTrades"
-  unrollEncodeQuery(result, {"symbol": symbol})
+  unrollEncodeQuery(result, {"symbol": symbol}, charL = '?')
 
 
 proc klines*(self: Binance; symbol: string; interval: Interval, startTime, endTime: int64): string =
   ## Klines data, AKA Candlestick data.
   result = "https://api.binance.com/api/v3/klines"
-  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "interval": $interval, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "interval": $interval, "limit": "500"}, charL = '?')
 
 
 proc klines*(self: Binance; symbol: string; interval: Interval): string =
   ## Klines data, AKA Candlestick data.
   result = "https://api.binance.com/api/v3/klines"
-  unrollEncodeQuery(result, {"symbol": symbol, "interval": $interval, "limit": "500"})
+  unrollEncodeQuery(result, {"symbol": symbol, "interval": $interval, "limit": "500"}, charL = '?')
 
 
 proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, start_str: Duration, end_str: Duration = initDuration(seconds = 0)): JsonNode =
@@ -258,7 +256,7 @@ proc getHistoricalKlines*(self: Binance, symbol: string, interval: Interval, sta
 proc ticker24h*(self: Binance; symbol: string): string =
   ## Price changes in the last 24 hours.
   result = "https://api.binance.com/api/v3/ticker/24hr"
-  unrollEncodeQuery(result, {"symbol": symbol})
+  unrollEncodeQuery(result, {"symbol": symbol}, charL = '?')
 
 
 proc ticker24h*(self: Binance): string {.inline.} =
@@ -269,7 +267,7 @@ proc ticker24h*(self: Binance): string {.inline.} =
 proc tickerPrice*(self: Binance; symbol: string): string =
   ## Symbol price.
   result = "https://api.binance.com/api/v3/ticker/price"
-  unrollEncodeQuery(result, {"symbol": symbol})
+  unrollEncodeQuery(result, {"symbol": symbol}, charL = '?')
 
 
 proc tickerPrice*(self: Binance): string {.inline.} =
@@ -280,7 +278,7 @@ proc tickerPrice*(self: Binance): string {.inline.} =
 proc orderBookTicker*(self: Binance; symbol: string): string =
   ## Symbol order book.
   result = "https://api.binance.com/api/v3/ticker/bookTicker"
-  unrollEncodeQuery(result, {"symbol": symbol})
+  unrollEncodeQuery(result, {"symbol": symbol}, charL = '?')
 
 
 proc orderBookTicker*(self: Binance): string {.inline.} =
@@ -746,21 +744,21 @@ proc time*(self: Binance): string {.inline.} =
 
 
 proc getAllCapital*(self: Binance): string =
-  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/config/getall")
+  self.signQueryString("https://api.binance.com/sapi/v1/capital/config/getall")
 
 
 proc withDrawApply*(self: Binance, coin, address: string, amount: float, network: string): string =
   result = ""
   unrollEncodeQuery(result, {"coin": coin, "address": address, "amount": amount.formatFloat(ffDecimal, 8), "network": network})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/capital/withdraw/apply")
+  self.signQueryString("https://api.binance.com/sapi/v1/capital/withdraw/apply")
 
 
 proc apiRestrictions*(self: Binance): string =
-  self.signQueryString("https://sapi.binance.com/sapi/v1/account/apiRestrictions")
+  self.signQueryString("https://api.binance.com/sapi/v1/account/apiRestrictions")
 
 
 proc enableFastWithdraw*(self: Binance): string =
-  self.signQueryString("https://sapi.binance.com/sapi/v1/account/enableFastWithdrawSwitch")
+  self.signQueryString("https://api.binance.com/sapi/v1/account/enableFastWithdrawSwitch")
 
 
 # Gift Cards endpoints ########################################################
@@ -770,21 +768,21 @@ proc createCode*(self: Binance; token: string; quantity: float): string =
   ## Create a new Gift Card via API.
   result = ""
   unrollEncodeQuery(result, {"token": token, "amount": quantity.formatFloat(ffDecimal, 8)})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/createCode")
+  self.signQueryString("https://api.binance.com/sapi/v1/giftcard/createCode")
 
 
 proc redeemCode*(self: Binance; code: string): string =
   ## If you enter the wrong `code` 5 times within 24 hours, you will no longer be able to redeem any Binance `code` for 1 day.
   result = ""
   unrollEncodeQuery(result, {"code": code})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/redeemCode")
+  self.signQueryString("https://api.binance.com/sapi/v1/giftcard/redeemCode")
 
 
 proc verify*(self: Binance; referenceNo: string): string =
   ## `referenceNo` is the number that `createCode` returns when successful, this is NOT the PIN code.
   result = ""
   unrollEncodeQuery(result, {"referenceNo": referenceNo})
-  self.signQueryString("https://sapi.binance.com/sapi/v1/giftcard/verify")
+  self.signQueryString("https://api.binance.com/sapi/v1/giftcard/verify")
 
 
 # Misc utils ##################################################################
