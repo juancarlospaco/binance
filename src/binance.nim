@@ -307,6 +307,13 @@ proc getOrder*(self: Binance; symbol: string): string =
   self.signQueryString("https://api.binance.com/api/v3/order")
 
 
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price, stopPrice: float): string =
+  ## Create a new order.
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6), "timeInForce": $timeInForce, "price": price.formatFloat(ffDecimal, 6), "stopPrice": stopPrice.formatFloat(ffDecimal, 6)})
+  self.signQueryString"https://api.binance.com/api/v3/order"
+
+
 proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
   ## Create a new order.
   result = ""
