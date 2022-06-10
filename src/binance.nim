@@ -289,9 +289,21 @@ proc orderBookTicker*(self: Binance): string {.inline.} =
 # Spot Trading ################################################################
 
 
-proc getOrder*(self: Binance, symbol: string, orderId = 1.Positive, origClientOrderId = 1.Positive): string =
+proc getOrder*(self: Binance; symbol: string; orderId: Natural, origClientOrderId: Natural): string =
   ## Check an orders status.
   unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId, "origClientOrderId": $origClientOrderId})
+  self.signQueryString("https://api.binance.com/api/v3/order")
+
+
+proc getOrder*(self: Binance; symbol: string; orderId: Natural): string =
+  ## Check an orders status.
+  unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId})
+  self.signQueryString("https://api.binance.com/api/v3/order")
+
+
+proc getOrder*(self: Binance; symbol: string): string =
+  ## Check an orders status.
+  unrollEncodeQuery(result, {"symbol": symbol, "orderId": "0"})
   self.signQueryString("https://api.binance.com/api/v3/order")
 
 
