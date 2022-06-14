@@ -600,136 +600,142 @@ proc symbolInformationFutures*(self: Binance; symbol: string): string =
   self.signQueryString("https://fapi.binance.com/fapi/v1/indexInfo")
 
 
-proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType; timeInForce: TimeInForce, quantity, price, stopPrice, activationPrice, callbackRate: float; closePosition: bool): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; timeInForce: TimeInForce, quantity, price, stopPrice, activationPrice, callbackRate: float; closePosition: bool): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": $timeInForce, "closePosition": $closePosition, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice, "callbackRate": $callbackRate  })
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice, activationPrice: float): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity: float): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice, activationPrice: float): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType; price: float): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; price: float): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "price": $price})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: var Binance; symbol: string; side: Side; tipe: OrderType): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc getOrderFutures*(self: var Binance; symbol: string; orderId: Positive): string =
+proc getOrderFutures*(self: Binance; symbol: string; orderId: Positive): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc getOrderFutures*(self: var Binance; symbol: string): string =
+proc getOrderFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc cancelOrderFutures*(self: var Binance; symbol: string; orderId: Positive): string =
+proc cancelOrderFutures*(self: Binance; symbol: string; orderId: Positive): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "orderId": $orderId})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc cancelOrderFutures*(self: var Binance; symbol: string): string =
+proc cancelOrderFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc cancelAllOrdersFutures*(self: var Binance; symbol: string): string =
+proc cancelAllOrdersFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v1/allOpenOrders"
 
 
-proc autoCancelAllOrdersFutures*(self: var Binance; symbol: string; countdownTime: Positive): string =
+proc autoCancelAllOrdersFutures*(self: Binance; symbol: string; countdownTime: Positive): string =
   ## Auto-Cancel All Open Orders with a countdown.
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "countdownTime": $countdownTime})
   self.signQueryString"https://fapi.binance.com/fapi/v1/countdownCancelAll"
 
 
-proc getAllOpenOrdersFutures*(self: var Binance; symbol: string): string =
+proc getAllOpenOrdersFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v1/openOrders"
 
 
-proc getAllOrdersFutures*(self: var Binance; symbol: string; startTime, endTime: Positive): string =
+proc getAllOrdersFutures*(self: Binance; symbol: string; startTime, endTime: Positive): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/allOrders"
 
 
-proc getAllOrdersFutures*(self: var Binance; symbol: string): string =
+proc getAllOrdersFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/allOrders"
 
 
-proc balanceFutures*(self: var Binance): string =
+proc balanceFutures*(self: Binance): string =
   self.signQueryString"https://fapi.binance.com/fapi/v2/balance"
 
 
-proc accountFutures*(self: var Binance): string =
+proc accountFutures*(self: Binance): string =
   self.signQueryString"https://fapi.binance.com/fapi/v2/account"
 
 
-proc leverageFutures*(self: var Binance; symbol: string; leverage: 1 .. 125): string =
+proc leverageFutures*(self: Binance; symbol: string; leverage: 1 .. 125): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "leverage": $leverage})
   self.signQueryString"https://fapi.binance.com/fapi/v1/leverage"
 
 
-proc marginTypeFutures*(self: var Binance; symbol: string; isolated: bool): string =
+proc marginTypeFutures*(self: Binance; symbol: string; isolated: bool): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "marginType": if isolated: "ISOLATED" else: "CROSSED"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/marginType"
 
 
-proc positionRiskFutures*(self: var Binance; symbol: string): string =
+proc positionRiskFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v2/positionRisk"
 
 
-proc userTradesFutures*(self: var Binance; symbol: string; startTime, endTime: Positive): string =
+proc userTradesFutures*(self: Binance; symbol: string; startTime, endTime: Positive): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/userTrades"
 
 
-proc userTradesFutures*(self: var Binance; symbol: string): string =
+proc userTradesFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/userTrades"
 
 
-proc incomeFutures*(self: var Binance; symbol: string; startTime, endTime: Positive; incomeType: IncomeType): string =
+proc incomeFutures*(self: Binance; symbol: string; startTime, endTime: Positive; incomeType: IncomeType): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "incomeType": $incomeType, "startTime": $startTime, "endTime": $endTime, "limit": "500"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/income"
 
 
-proc incomeFutures*(self: var Binance; symbol: string): string =
+proc incomeFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "limit": "500"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/income"
 
 
-proc commissionRateFutures*(self: var Binance; symbol: string): string =
+proc commissionRateFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v1/commissionRate"
