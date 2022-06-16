@@ -41,6 +41,8 @@ type
     ORDER_TYPE_TAKE_PROFIT       = "TAKE_PROFIT"
     ORDER_TYPE_TAKE_PROFIT_LIMIT = "TAKE_PROFIT_LIMIT"
     ORDER_TYPE_LIMIT_MAKER       = "LIMIT_MAKER"
+    ORDER_TYPE_TRAILING_STOP_MARKET = "TRAILING_STOP_MARKET"
+    ORDER_TYPE_STOP_MARKET          = "STOP_MARKET"
 
   FutureOrderType* = enum
     FUTURE_ORDER_TYPE_LIMIT              = "LIMIT"
@@ -600,15 +602,51 @@ proc symbolInformationFutures*(self: Binance; symbol: string): string =
   self.signQueryString("https://fapi.binance.com/fapi/v1/indexInfo")
 
 
-proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; timeInForce: TimeInForce, quantity, price, stopPrice, activationPrice, callbackRate: float; closePosition: bool): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; timeInForce: TimeInForce, quantity, price, stopPrice, activationPrice: float; callbackRate: 0.1 .. 5.0; closePosition: bool): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": $timeInForce, "closePosition": $closePosition, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice, "callbackRate": $callbackRate  })
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice: float; closePosition: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "closePosition": $closePosition, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; stopPrice: float; closePosition: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "closePosition": $closePosition, "stopPrice": $stopPrice})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity: float; callbackRate: 0.1 .. 5.0): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "callbackRate": $callbackRate})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; callbackRate: 0.1 .. 5.0; closePosition: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "callbackRate": $callbackRate, "closePosition": $closePosition})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice: float): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
 proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity: float): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, stopPrice: float): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "stopPrice": $stopPrice})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
@@ -660,7 +698,7 @@ proc cancelAllOrdersFutures*(self: Binance; symbol: string): string =
   self.signQueryString"https://fapi.binance.com/fapi/v1/allOpenOrders"
 
 
-proc autoCancelAllOrdersFutures*(self: Binance; symbol: string; countdownTime: Positive): string =
+proc autoCancelAllOrdersFutures*(self: Binance; symbol: string; countdownTime: Natural): string =
   ## Auto-Cancel All Open Orders with a countdown.
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "countdownTime": $countdownTime})
@@ -739,6 +777,12 @@ proc commissionRateFutures*(self: Binance; symbol: string): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol})
   self.signQueryString"https://fapi.binance.com/fapi/v1/commissionRate"
+
+
+proc postLeverageFutures*(self: Binance; symbol: string; leverage: 1 .. 125): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "leverage": $leverage})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/leverage"
 
 
 # User data streams ###########################################################
