@@ -181,3 +181,4 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@kamilchm](https://github.com/kamilchm '2022-03-23')
 :star: [@Parzivalcen](https://github.com/Parzivalcen '2022-04-06')
 :star: [@hugosenari](https://github.com/hugosenari '2022-05-28')
+:star: [@RodrigoTorresWeb](https://github.com/RodrigoTorresWeb '2022-06-25')	
