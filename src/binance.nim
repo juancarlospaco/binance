@@ -43,6 +43,7 @@ type
     ORDER_TYPE_LIMIT_MAKER       = "LIMIT_MAKER"
     ORDER_TYPE_TRAILING_STOP_MARKET = "TRAILING_STOP_MARKET"
     ORDER_TYPE_STOP_MARKET          = "STOP_MARKET"
+    ORDER_TYPE_STOP_LIMIT           = "STOP_LIMIT"
 
   FutureOrderType* = enum
     FUTURE_ORDER_TYPE_LIMIT              = "LIMIT"
@@ -620,6 +621,66 @@ proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderTyp
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
+proc postOrderFutures*(self: Binance; symbol: string; side, positionSide: Side; tipe: OrderType; price, stopPrice: float; closePosition: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe, "closePosition": $closePosition,  "price": $price, "stopPrice": $stopPrice})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; quantity: float; side, positionSide: Side; tipe: OrderType; callbackRate: 0.1 .. 5.0): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe, "callbackRate": $callbackRate})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; quantity: float; side, positionSide: Side; tipe: OrderType): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; quantity, price: float; side, positionSide: Side; tipe: OrderType; timeInForce: TimeInForce): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "price": $price, "timeInForce": $timeInForce, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; quantity, price, stopPrice: float; side, positionSide: Side; tipe: OrderType; timeInForce: TimeInForce): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "timeInForce": $timeInForce, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; quantity, stopPrice: float; side, positionSide: Side; tipe: OrderType): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "stopPrice": $stopPrice, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; stopPrice: float; side, positionSide: Side; tipe: OrderType; closePosition: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "stopPrice": $stopPrice, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe, "closePosition": $closePosition})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; stopPrice: float; side, positionSide: Side; tipe: OrderType): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "stopPrice": $stopPrice, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; price, quantity: float; side, positionSide: Side; tipe: OrderType; callbackRate: 0.1 .. 5.0): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "price": $price, "quantity": $quantity, "callbackRate": $callbackRate, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; activationPrice, quantity: float; side, positionSide: Side; tipe: OrderType; callbackRate: 0.1 .. 5.0): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "activationPrice": $activationPrice, "quantity": $quantity, "callbackRate": $callbackRate, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
 proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity: float; callbackRate: 0.1 .. 5.0): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "callbackRate": $callbackRate})
@@ -635,6 +696,12 @@ proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderTyp
 proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice: float): string =
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/order"
+
+
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price: float; timeInForce: TimeInForce): string =
+  result = ""
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "timeInForce": $timeInForce})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
@@ -785,6 +852,18 @@ proc postLeverageFutures*(self: Binance; symbol: string; leverage: 1 .. 125): st
   self.signQueryString"https://fapi.binance.com/fapi/v1/leverage"
 
 
+proc postPositionModeFutures*(self: Binance; hedgeMode: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"dualSidePosition": $hedgeMode})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/positionSide/dual"
+
+
+proc postMultiAssetModeFutures*(self: Binance; multiAssetsMode: bool): string =
+  result = ""
+  unrollEncodeQuery(result, {"multiAssetsMargin": $multiAssetsMode})
+  self.signQueryString"https://fapi.binance.com/fapi/v1/multiAssetsMargin"
+
+
 # User data streams ###########################################################
 
 
@@ -921,11 +1000,19 @@ proc get24hHiLo*(self: Binance; symbolTicker: string): tuple[hi24h: float, lo24h
   result = (hi24h: temp["highPrice"].getStr.parseFloat, lo24h: temp["lowPrice"].getStr.parseFloat)
 
 
+proc getAth*(self: Binance; ticker: string): float =
+  ## Get ATH of a ticker.
+  assert ticker.len > 0, "ticker must not be empty string"
+  for it in self.getHistoricalKlines(ticker, KLINE_INTERVAL_1MONTH, initDuration(days = 365))[0]:
+    let thisMonthPrice = it[2].getStr.parseFloat
+    if thisMonthPrice > result: result = thisMonthPrice
+
+
 template truncate*(number: float): float =
   ## Truncate a float, this is a workaround, because `round` and `formatFloat` are fixed precision.
   var dotFound = false
   var s = newStringOfCap(8)
-  for c in number.formatFloat(ffDecimal, 6):
+  for c in number.formatFloat(ffDecimal, 4):
     case c
     of '-': s.add '-'
     of '+': discard
