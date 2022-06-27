@@ -10,12 +10,6 @@ type
     SIDE_BUY  = "BUY"
     SIDE_SELL = "SELL"
 
-  TimeInForce* = enum
-    TIME_IN_FORCE_GTC = "GTC"  # Good Till Cancelled
-    TIME_IN_FORCE_IOC = "IOC"  # Immediate Or Cancel
-    TIME_IN_FORCE_FOK = "FOK"  # Fill Or Kill
-    TIME_IN_FORCE_GTX = "GTX"  # Post Only
-
   Interval* = enum
     KLINE_INTERVAL_1MINUTE  = "1m"
     KLINE_INTERVAL_3MINUTE  = "3m"
@@ -44,20 +38,6 @@ type
     ORDER_TYPE_TRAILING_STOP_MARKET = "TRAILING_STOP_MARKET"
     ORDER_TYPE_STOP_MARKET          = "STOP_MARKET"
     ORDER_TYPE_STOP_LIMIT           = "STOP_LIMIT"
-
-  FutureOrderType* = enum
-    FUTURE_ORDER_TYPE_LIMIT              = "LIMIT"
-    FUTURE_ORDER_TYPE_MARKET             = "MARKET"
-    FUTURE_ORDER_TYPE_STOP               = "STOP"
-    FUTURE_ORDER_TYPE_STOP_MARKET        = "STOP_MARKET"
-    FUTURE_ORDER_TYPE_TAKE_PROFIT        = "TAKE_PROFIT"
-    FUTURE_ORDER_TYPE_TAKE_PROFIT_MARKET = "TAKE_PROFIT_MARKET"
-    FUTURE_ORDER_TYPE_LIMIT_MAKER        = "LIMIT_MAKER"
-
-  ResponseType* = enum
-    ORDER_RESP_TYPE_ACK    = "ACK"
-    ORDER_RESP_TYPE_RESULT = "RESULT"
-    ORDER_RESP_TYPE_FULL   = "FULL"
 
   IncomeType* {.pure.} = enum
     TRANSFER             = "TRANSFER"
@@ -310,18 +290,18 @@ proc getOrder*(self: Binance; symbol: string): string =
   self.signQueryString("https://api.binance.com/api/v3/order")
 
 
-proc postOrder*(self: Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price, stopPrice: float): string =
+proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quantity, price, stopPrice: float): string =
   ## Create a new order.
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6), "timeInForce": $timeInForce, "price": price.formatFloat(ffDecimal, 6), "stopPrice": stopPrice.formatFloat(ffDecimal, 6)})
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6), "timeInForce": "GTC", "price": price.formatFloat(ffDecimal, 6), "stopPrice": stopPrice.formatFloat(ffDecimal, 6)})
   self.signQueryString"https://api.binance.com/api/v3/order"
 
 
-proc postOrder*(self: var Binance; side: Side; tipe: OrderType; timeInForce, symbol: string; quantity, price: float): string =
+proc postOrder*(self: var Binance; side: Side; tipe: OrderType; symbol: string; quantity, price: float): string =
   ## Create a new order.
   result = ""
   unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": quantity.formatFloat(ffDecimal, 6)})
-  if tipe == ORDER_TYPE_LIMIT: unrollEncodeQuery(result, {"timeInForce": $timeInForce, "price": price.formatFloat(ffDecimal, 6)})
+  if tipe == ORDER_TYPE_LIMIT: unrollEncodeQuery(result, {"timeInForce": "GTC", "price": price.formatFloat(ffDecimal, 6)})
   self.signQueryString"https://api.binance.com/api/v3/order"
 
 
@@ -339,11 +319,10 @@ proc postOrder*(self: Binance; side: Side; tipe: OrderType; symbol: string; quan
   self.signQueryString("https://api.binance.com/api/v3/order")
 
 
-proc orderTest*(self: Binance; side: Side; tipe: OrderType; newOrderRespType: ResponseType;
-    timeInForce, newClientOrderId, symbol: string; quantity, price: float): string =
+proc orderTest*(self: Binance; side: Side; tipe: OrderType; newClientOrderId, symbol: string; quantity, price: float): string =
   ## Test new order creation and signature/recvWindow. Creates and validates a new order but does not send it into the matching engine.
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": $timeInForce, "quantity": $quantity, "price": $price, "newClientOrderId": $newClientOrderId, "newOrderRespType": $newOrderRespType})
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": "GTC", "quantity": $quantity, "price": $price, "newClientOrderId": $newClientOrderId, "newOrderRespType": "ACK"})
   self.signQueryString"https://api.binance.com/api/v3/order/test"
 
 
@@ -376,10 +355,10 @@ proc openOrderList*(self: Binance): string =
   self.signQueryString"https://api.binance.com/api/v3/openOrderList"
 
 
-proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float, stopLimitTimeInForce: string): string =
+proc newOrderOco*(self: Binance, symbol: string, side: Side, quantity, price, stopPrice, stopLimitPrice :float): string =
   ## Create a new OCO order.
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "price": price.formatFloat(ffDecimal, 6), "quantity": quantity.formatFloat(ffDecimal, 6), "stopPrice": stopPrice.formatFloat(ffDecimal, 6), "stopLimitPrice": stopLimitPrice.formatFloat(ffDecimal, 6), "stopLimitTimeInForce": stopLimitTimeInForce})
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "price": price.formatFloat(ffDecimal, 6), "quantity": quantity.formatFloat(ffDecimal, 6), "stopPrice": stopPrice.formatFloat(ffDecimal, 6), "stopLimitPrice": stopLimitPrice.formatFloat(ffDecimal, 6), "stopLimitTimeInForce": "GTC"})
   self.signQueryString"https://api.binance.com/api/v3/order/oco"
 
 
@@ -603,9 +582,9 @@ proc symbolInformationFutures*(self: Binance; symbol: string): string =
   self.signQueryString("https://fapi.binance.com/fapi/v1/indexInfo")
 
 
-proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; timeInForce: TimeInForce, quantity, price, stopPrice, activationPrice: float; callbackRate: 0.1 .. 5.0; closePosition: bool): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice, activationPrice: float; callbackRate: 0.1 .. 5.0; closePosition: bool): string =
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": $timeInForce, "closePosition": $closePosition, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice, "callbackRate": $callbackRate  })
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": "GTC", "closePosition": $closePosition, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice, "callbackRate": $callbackRate  })
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
@@ -639,15 +618,15 @@ proc postOrderFutures*(self: Binance; symbol: string; quantity: float; side, pos
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: Binance; symbol: string; quantity, price: float; side, positionSide: Side; tipe: OrderType; timeInForce: TimeInForce): string =
+proc postOrderFutures*(self: Binance; symbol: string; quantity, price: float; side, positionSide: Side; tipe: OrderType): string =
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "price": $price, "timeInForce": $timeInForce, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "price": $price, "timeInForce": "GTC", "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: Binance; symbol: string; quantity, price, stopPrice: float; side, positionSide: Side; tipe: OrderType; timeInForce: TimeInForce): string =
+proc postOrderFutures*(self: Binance; symbol: string; quantity, price, stopPrice: float; side, positionSide: Side; tipe: OrderType): string =
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "timeInForce": $timeInForce, "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
+  unrollEncodeQuery(result, {"symbol": symbol, "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "timeInForce": "GTC", "side": $side, "positionSide": if positionSide == SIDE_SELL: "SHORT" else: "LONG", "type": $tipe})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
@@ -699,9 +678,9 @@ proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderTyp
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price: float; timeInForce: TimeInForce): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price: float): string =
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "timeInForce": $timeInForce})
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "quantity": $quantity, "price": $price, "timeInForce": "GTC"})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
@@ -1006,6 +985,10 @@ proc getAth*(self: Binance; ticker: string): float =
   for it in self.getHistoricalKlines(ticker, KLINE_INTERVAL_1MONTH, initDuration(days = 365))[0]:
     let thisMonthPrice = it[2].getStr.parseFloat
     if thisMonthPrice > result: result = thisMonthPrice
+
+
+template reversed*(this: Side): Side =
+  if this == SIDE_SELL: SIDE_BUY else: SIDE_SELL
 
 
 template truncate*(number: float): float =
