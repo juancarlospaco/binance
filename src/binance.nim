@@ -1,10 +1,13 @@
-import std/[times, httpclient, httpcore, json, strutils, tables, os, algorithm, macros], binance/binance_sha256
+import std/[times, httpcore, json, strutils, tables, os, algorithm, macros], binance/binance_sha256
+
+when defined(js): import nodejs/jshttpclient
+else:             import std/httpclient
 
 
 type
   Binance* = object  ## Binance API Client.
     apiSecret*: string  ## Get API Key and API Secret at https://www.binance.com/en/my/settings/api-management
-    client: HttpClient
+    client: (when defined(js): JsHttpClient else: HttpClient)
 
   Side* = enum
     SIDE_BUY  = "BUY"
@@ -94,18 +97,25 @@ template close*(self: Binance) = self.client.close()
 
 proc request*(self: Binance; endpoint: string; httpMethod: static[HttpMethod]): JsonNode =
   ## Httpclient request but with a Retry.
-  for _ in 0 .. 9:
-    try:
-      result = parseJson(self.client.request(url = endpoint, httpMethod = httpMethod).body)
-      break
-    except:
-      continue
+  when defined(js):
+    let rekuest = JsRequest(
+      url: endpoint, `method`: httpMethod, integrity: "", referrer: "", mode: fmCors, keepAlive: false,
+      credentials: fcOmit, cache: fchDefault, redirect: frFollow, referrerPolicy: frpOrigin, body: cstring.default,
+    )
+    result = parseJson($(self.client.request(rekuest).responseText))
+  else:
+    for _ in 0 .. 9:
+      try:
+        result = parseJson(self.client.request(url = endpoint, httpMethod = httpMethod).body)
+        break
+      except:
+        continue
 
 
 template signQueryString(self: Binance; endpoint: string) =
   ## Sign the query string for Binance API, reusing the same string.
   unrollEncodeQuery(result, {"recvWindow": "60000", "timestamp": $(now().utc.toTime.toUnix * 1_000)})
-  let signature: string = sha256.hmac(self.apiSecret, result)
+  let signature: string = sha256hmac(self.apiSecret, result)
   unrollEncodeQuery(result, {"signature": signature})  # This is special cased, starts with '&'.
   result = endpoint & '?' & result
 
@@ -114,9 +124,15 @@ proc newBinance*(apiKey, apiSecret: string): Binance =
   ## Constructor for Binance client.
   assert apiKey.len    >= 64, "apiKey must be a string of >= 64 chars."
   assert apiSecret.len >= 64, "apiSecret must be a string of >= 64 chars."
-  var client = newHttpClient(timeout = 999_999)
-  client.headers.add "X-MBX-APIKEY", apiKey
-  client.headers.add "DNT", "1"
+  when defined(js):
+    let jeader: Headers = newHeaders()
+    jeader.add "X-MBX-APIKEY".cstring, apiKey.cstring
+    jeader.add "DNT".cstring, "1".cstring
+    var client = newJsHttpClient(headers = jeader)
+  else:
+    var client = newHttpClient(timeout = 999_999)
+    client.headers.add "X-MBX-APIKEY", apiKey
+    client.headers.add "DNT", "1"
   result = Binance(apiSecret: apiSecret, client: client)
 
 
