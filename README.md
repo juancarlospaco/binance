@@ -2,6 +2,9 @@
 
 ![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/binance.jpg)
 
+![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/futures.jpg)
+
+
 ![](https://github.com/juancarlospaco/binance/actions/workflows/build.yml/badge.svg)
 ![](https://img.shields.io/github/languages/top/juancarlospaco/binance?style=for-the-badge)
 ![](https://img.shields.io/github/stars/juancarlospaco/binance?style=for-the-badge)
@@ -181,4 +184,4 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@kamilchm](https://github.com/kamilchm '2022-03-23')
 :star: [@Parzivalcen](https://github.com/Parzivalcen '2022-04-06')
 :star: [@hugosenari](https://github.com/hugosenari '2022-05-28')
-:star: [@RodrigoTorresWeb](https://github.com/RodrigoTorresWeb '2022-06-25')	
+:star: [@RodrigoTorresWeb](https://github.com/RodrigoTorresWeb '2022-06-25')
