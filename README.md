@@ -46,7 +46,7 @@ echo client.request(preparedEndpoint, HttpPost)
 
 - https://juancarlospaco.github.io/binance
 - By default is using the real production Binance API.
-- Spot API (including OCO Orders) and Futures API (including 125x Leveraged Perpetual Futures) are supported only.
+- Spot API (including OCO Orders) and Futures API (including 125x Leveraged Perpetual Futures) are supported.
 - Automatic Trailing Stop-Loss is supported.
 - Automatic Cancelation of Futures is supported.
 
