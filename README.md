@@ -2,7 +2,7 @@
 
 ![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/binance.jpg)
 
-![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/futures.png)
+![](https://raw.githubusercontent.com/juancarlospaco/binance/nim/futures.png "Leveraged Perpetual Futures")
 
 
 ![](https://github.com/juancarlospaco/binance/actions/workflows/build.yml/badge.svg)
