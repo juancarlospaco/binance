@@ -59,6 +59,9 @@ TradingBot example: https://github.com/juancarlospaco/binance/blob/nim/examples/
 
 Gift-Card Bot example: https://github.com/juancarlospaco/binance/blob/nim/examples/giftcardbot.nim
 
+Leveraged Perpetual Futures with Stop-Loss and Trailing Stop-Loss example:
+https://github.com/juancarlospaco/binance/blob/nim/examples/futures_maker.nim
+
 
 # More
 
