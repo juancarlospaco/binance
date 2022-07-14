@@ -18,9 +18,8 @@ proc main() =
     var
       order: string
       trade: JsonNode
-
-    if (hi24h > 1.0 and lo24h < 1.0) and (price > hi24h or price < lo24h):
-      let side = if price > hi24h: SIDE_SELL else: SIDE_BUY
+    if (hi24h > 1.0 and lo24h < 1.0) and (price >= hi24h or price <= lo24h):
+      let side = if price >= hi24h: SIDE_SELL else: SIDE_BUY
       if lastOp == side: continue  # Swing trade.
       order = client.postOrder(
         symbol   = ticker,
