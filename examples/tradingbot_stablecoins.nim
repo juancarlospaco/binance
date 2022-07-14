@@ -7,7 +7,7 @@ proc main() =
   ## Binance does NOT charge commissions for stablecoins trading pairs so this is free money.
   const ticker = "BUSDUSDT"  # Other stablecoin pairs: "TUSDUSDT", "USDPUSDT", "USDCUSDT", "BUSDUSDT", "TUSDBUSD", "USDPBUSD", "USDCBUSD"
   let
-    client      = newBinance(readLineFromStdin"Binance API Key?: ", readLineFromStdin"Binance API Secret?: ")
+    client = newBinance(readLineFromStdin"Binance API Key?: ", readLineFromStdin"Binance API Secret?: ")
     usdQuantity = readLineFromStdin"USD quantity for position size? (integer >10): ".parseInt.float
   var lastOp: binance.Side
 
@@ -40,7 +40,7 @@ proc main() =
           ",size=" , int(usdQuantity),
         )
     else:
-      sleep 300_000  # Sleep for 5 minutes.
+      sleep 60_000  # Sleep for 1 minute.
   client.close()
 
 
