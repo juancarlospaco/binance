@@ -859,6 +859,12 @@ proc postMultiAssetModeFutures*(self: Binance; multiAssetsMode: bool): string =
   self.signQueryString"https://fapi.binance.com/fapi/v1/multiAssetsMargin"
 
 
+proc getBalanceFutures*(self: Binance; coin: string): float =
+  ## Get user wallet Futures balance of 1 specific coin.
+  for it in self.request(self.balanceFutures(), HttpGet):
+    if it["asset"].getStr == coin: return it["balance"].getStr.parseFloat
+
+
 # User data streams ###########################################################
 
 
