@@ -55,6 +55,12 @@ type
     COIN_SWAP_DEPOSIT    = "COIN_SWAP_DEPOSIT"
     COIN_SWAP_WITHDRAW   = "COIN_SWAP_WITHDRAW"
 
+  TransferType* {.pure.} = enum
+    spotToFutures     = "1"  ## Spot            to  Futures.
+    futuresToSpot     = "2"  ## Futures         to  Spot.
+    spotToFuturesCoin = "3"  ## Spot            to  Futures Coin-M.
+    futuresCoinToSpot = "4"  ## Futures Coin-M  to  Spot.
+
 
 const stableCoins* = ["USDT", "BUSD", "USDC", "DAI", "USDP"]
 
@@ -857,6 +863,30 @@ proc postMultiAssetModeFutures*(self: Binance; multiAssetsMode: bool): string =
   result = ""
   unrollEncodeQuery(result, {"multiAssetsMargin": $multiAssetsMode})
   self.signQueryString"https://fapi.binance.com/fapi/v1/multiAssetsMargin"
+
+
+proc postTransferFutures*(self: Binance; asset: string; amount: float; tipe: TransferType): string =
+  result = ""
+  unrollEncodeQuery(result, {"asset": asset, "amount": $amount, "type": $tipe})
+  self.signQueryString"https://api.binance.com/sapi/v1/futures/transfer"
+
+
+proc getBalanceFutures*(self: Binance; coin: string): float =
+  ## Get user wallet Futures balance of 1 specific coin.
+  for it in self.request(self.balanceFutures(), HttpGet):
+    if it["asset"].getStr == coin: return it["balance"].getStr.parseFloat
+
+
+proc hasOpenPositionsFutures*(self: Binance; ticker: string): bool =
+  ## Return `true` if `ticker` has open Positions. This is agnostic of open Orders. Works for Hedge OFF.
+  let position = self.request(self.positionRiskFutures(symbol = ticker), HttpGet)
+  if position.len == 1:
+    result = position[0]["entryPrice"].getStr != "0.0"
+
+
+proc hasOpenOrdersFutures*(self: Binance; ticker: string): bool =
+  ## Return `true` if `ticker` has open Orders. This is agnostic of open Positions. Works for Hedge OFF.
+  result = self.request(self.getAllOpenOrdersFutures(symbol = ticker), HttpGet).len > 0
 
 
 # User data streams ###########################################################
