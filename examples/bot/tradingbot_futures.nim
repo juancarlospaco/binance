@@ -5,10 +5,10 @@ import binance
 
 
 template cancelAllFutures() =
-  ## Cancel all orders (but NOT open positions). {#000}
+  ## Cancel all open orders (but NOT open positions). {#000}
   sl[ti] = (price: 0.0, orderId: 0)
   order = client.cancelAllOrdersFutures(symbol = ticker)
-  for _ in 0 .. 2:
+  for _ in 0 .. 2:  # Repeat, because sometimes 1 gets ignored?
     trade = client.request(order, HttpDelete)
     echo trade
 
