@@ -1,4 +1,3 @@
-## Structured JSON Logging, compile-time-unrolled.
 import std/macros
 
 
