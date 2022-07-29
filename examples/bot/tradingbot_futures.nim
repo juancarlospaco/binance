@@ -1,4 +1,5 @@
 ## Crypto Trading Bot for Leveraged Perpetual Futures.
+# For Dev, use https://marketplace.visualstudio.com/items?itemName=zimonitrome.color-blocks
 import std/[json, os, strutils, httpcore, times, math, random]
 import dotenv, constants, loging
 import binance
@@ -15,7 +16,7 @@ template cancelAllFutures() =
 
 proc main(config: JsonNode) =
 
-  # Tickers for perpertual futures. {#f0f}
+  # Tickers for perpertual futures. {#c00ffe}
   const tickers = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "YFIUSDT", "MKRUSDT", "BCHUSDT", "XMRUSDT", "ZECUSDT", "LTCUSDT", "EGLDUSDT"]
 
   # Read the configuration from file into variables. {#000}
@@ -156,6 +157,7 @@ proc main(config: JsonNode) =
                     "orders"   : $i,
                     "positions": $positions,
                   }, "future"
+
                 else: cancelAllFutures()
               else: cancelAllFutures()
             else: cancelAllFutures()
@@ -170,6 +172,7 @@ proc main(config: JsonNode) =
           let slPrice = float(int(trade[0]["markPrice"].getStr.parseFloat * 0.95))
 
           if int(slPrice) > int(sl[ti].price):
+
             # Fixed Stop-Loss market-exit order only moves up. {#000}
             order = client.postOrderFutures(
               closePosition = true,
@@ -181,7 +184,7 @@ proc main(config: JsonNode) =
             trade = client.request(order, HttpPost)
             echo '#', '\t', order, '\n', trade
 
-            # Close old SL.
+            # Close old SL {#000}.
             if trade.hasKey"orderId":
               inc positions
               prevPrice[ti] = 999_999_999.9
@@ -203,7 +206,7 @@ proc main(config: JsonNode) =
       # withdraw profits out of the exchange to user wallet if balance grew too much.
       # 10 USDT is the minimum allowed to withdraw via BSC.
       if client.getBalanceFutures("USDT") > maxBalanceUsdt + 10.0:
-        # Move 10 USDT from Futures to Spot, because cant withdraw from Futures.
+        # Move 10 USDT from Futures to Spot, because cant withdraw from Futures. {#000}
         order = client.postTransferFutures(
           asset  = "USDT",
           amount = 10.0,
