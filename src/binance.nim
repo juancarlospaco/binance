@@ -736,9 +736,9 @@ proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderTyp
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
-proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, price, stopPrice, activationPrice: float; callbackRate: 0.1 .. 5.0): string =
+proc postOrderFutures*(self: Binance; symbol: string; side: Side; tipe: OrderType; quantity, activationPrice: float; callbackRate: 0.1 .. 5.0): string =
   result = ""
-  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": "GTC", "quantity": $quantity, "price": $price, "stopPrice": $stopPrice, "activationPrice": $activationPrice, "callbackRate": $callbackRate})
+  unrollEncodeQuery(result, {"symbol": symbol, "side": $side, "type": $tipe, "timeInForce": "GTC", "quantity": $quantity, "activationPrice": $activationPrice, "callbackRate": $callbackRate})
   self.signQueryString"https://fapi.binance.com/fapi/v1/order"
 
 
