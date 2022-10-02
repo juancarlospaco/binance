@@ -23,7 +23,7 @@ proc main(config: JsonNode) =
   let
     startTime = now()
     walletBscProfits = config["wallet_address_bsc_to_send_profits"].getStr
-    minLeverage:              1 .. 25     = config["min_leverage"].getInt
+    minLeverage:              1 .. 20     = config["min_leverage"].getInt
     doNotTradeBelow:         50 .. 500    = config["do_not_trade_coins_below_usd"].getInt
     trailingStopLossOffset: 1.0 .. 5.0    = config["trailing_stop_loss_offset_percent"].getInt.float
     marketEntryOffset:    0.015 .. 0.9999 = config["price_offset_for_market_entry_order"].getFloat  # Do NOT use values lower than 0.015
@@ -77,7 +77,7 @@ proc main(config: JsonNode) =
 
       # Set Leverage for the position, can not be changed with open positions. {#000}
       if trade.hasKey"countdownTime":
-        leverage = rand(minLeverage.int .. 25)  # >25 gets Liquidated.
+        leverage = rand(minLeverage.int .. 20)  # >25 gets Liquidated.
         order = client.postLeverageFutures(symbol = ticker, leverage = leverage)
         trade = client.request(order, HttpPost)  # {"symbol":"LPTUSDT","leverage":9,"maxNotionalValue":"100000"}
         echo '#', '\t', order, '\n', trade
