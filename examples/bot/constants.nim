@@ -61,7 +61,7 @@ usd_quantity = 55                            # int
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Apalancamiento minimo para trading, apalancamiento maximo esta fijado en 25x, 25 es el maximo para la estrategia.
 # Debes mantener un monton de USDT en Binance USD-M Futures Wallet para evitar ser Liquidado.
-min_leverage = 20                            # int
+min_leverage = 15                            # int
 
 
 # Offset from the current market price for the market-entry limit order,
