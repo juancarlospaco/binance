@@ -23,7 +23,7 @@ proc main(config: JsonNode) =
   let
     startTime = now()
     walletBscProfits = config["wallet_address_bsc_to_send_profits"].getStr
-    minLeverage:              1 .. 20     = config["min_leverage"].getInt
+    minLeverage:              1 .. 15     = config["min_leverage"].getInt
     doNotTradeBelow:         50 .. 500    = config["do_not_trade_coins_below_usd"].getInt
     trailingStopLossOffset: 1.0 .. 5.0    = config["trailing_stop_loss_offset_percent"].getInt.float
     marketEntryOffset:    0.015 .. 0.9999 = config["price_offset_for_market_entry_order"].getFloat  # Do NOT use values lower than 0.015
@@ -44,7 +44,7 @@ proc main(config: JsonNode) =
   let accountStatus = client.request(client.apiRestrictions(), HttpGet)
   doAssert accountStatus["enableSpotAndMarginTrading"].getBool, "Configure your Binance API Key with 'Spot and Margin trading' permissions enabled. https://www.binance.com/en/my/settings/api-management"
   doAssert accountStatus["enableFutures"].getBool, "Configure your Binance API Key with 'Futures' permissions enabled. https://www.binance.com/en/my/settings/api-management"
-  doAssert accountStatus["enableWithdrawals"].getBool, "Configure your Binance API Key with 'Spot and Margin trading' and 'Withdraw' permissions enabled. https://www.binance.com/en/my/settings/api-management"
+  # doAssert accountStatus["enableWithdrawals"].getBool, "Configure your Binance API Key with 'Spot and Margin trading' and 'Withdraw' permissions enabled. https://www.binance.com/en/my/settings/api-management"
 
   # Force MultiAssets-Mode to OFF. {#000}
   order = client.postMultiAssetModeFutures(multiAssetsMode = false)
