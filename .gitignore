@@ -4,3 +4,4 @@ htmldocs/
 *.ini
 *.exe
 *.log
+examples/bot/tradingbot_futures
