@@ -44,7 +44,7 @@ proc main(config: JsonNode) =
   let accountStatus = client.request(client.apiRestrictions(), HttpGet)
   doAssert accountStatus["enableSpotAndMarginTrading"].getBool, "Configure your Binance API Key with 'Spot and Margin trading' permissions enabled. https://www.binance.com/en/my/settings/api-management"
   doAssert accountStatus["enableFutures"].getBool, "Configure your Binance API Key with 'Futures' permissions enabled. https://www.binance.com/en/my/settings/api-management"
-  # doAssert accountStatus["enableWithdrawals"].getBool, "Configure your Binance API Key with 'Spot and Margin trading' and 'Withdraw' permissions enabled. https://www.binance.com/en/my/settings/api-management"
+  doAssert accountStatus["enableWithdrawals"].getBool, "Configure your Binance API Key with 'Spot and Margin trading' and 'Withdraw' permissions enabled. https://www.binance.com/en/my/settings/api-management"
 
   # Force MultiAssets-Mode to OFF. {#000}
   order = client.postMultiAssetModeFutures(multiAssetsMode = false)
