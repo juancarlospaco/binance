@@ -53,7 +53,7 @@ binance_api_secret = COPYPASTE_YOUR_BINANCE_SECRET_API_KEY_HERE                 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Cantidad de la Posicion en USDT, cuanta mas cantidad mas ganancias.
 # El minimo debe ser >50 USD, >100 USD esta bien, recomendado >1000 USD.
-usd_quantity = 55                            # int
+usd_quantity = 75                            # int
 
 
 # Minimum leverage for trading, maximum leverage is fixed to 25x, 25 is the maximum allowed by the strategy.
@@ -85,7 +85,7 @@ price_offset_for_market_entry_order = 0.015  # float
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # NO abrir posiciones para coins por debajo de este precio en USD.
 # Esto previene precios de Liquidacion "raros" cerca del cero.
-do_not_trade_coins_below_usd = 55            # int
+do_not_trade_coins_below_usd = 100           # int
 
 
 # Trailing Stop-Loss offset in percentage of the price,
