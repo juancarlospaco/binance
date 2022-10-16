@@ -40,6 +40,7 @@ proc main() =
           ",size=" , int(usdQuantity),
         )
     else:
+      echo ticker, '\t', price
       sleep 60_000  # Sleep for 1 minute.
   client.close()
 
