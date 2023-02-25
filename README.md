@@ -30,6 +30,7 @@
 - Some USDT in Binance Futures USD-M wallet to trade with, >100 USDT minimal, >1000 USDT recommended, for NO Leverage (1x).
 - Some USDT in Binance Futures USD-M wallet to trade with, >1000 USDT minimal, >10000 USDT recommended, for Leverage (125x).
 - Some BNB coins in Binance Spot wallet for commisions, >1 USD in BNB minimal, >10 USD in BNB recommended.
+- If you are reading this after year 2023, the web of Binance for the API Keys has changed, but it still works.
 
 
 # Examples
