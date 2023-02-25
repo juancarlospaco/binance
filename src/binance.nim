@@ -114,7 +114,7 @@ proc request*(self: Binance; endpoint: string; httpMethod: static[HttpMethod]): 
       try:
         result = parseJson(self.client.request(url = endpoint, httpMethod = httpMethod).body)
         break
-      except:
+      except CatchableError:
         continue
 
 
@@ -969,7 +969,7 @@ proc verify*(self: Binance; referenceNo: string): string =
 
 template getBnb*(self: Binance): float =
   ## Get BNB in user wallet, this is useful for Commisions.
-  try: self.getWallet()["BNB"] except Exception: 0.0
+  try: self.getWallet()["BNB"] except CatchableError: 0.0
 
 
 template getBnbPrice*(self: Binance): string =
