@@ -1066,6 +1066,36 @@ template truncate*(number: float): float =
   parseFloat(s)
 
 
+template getMaxLeverage*(ticker: string): int =
+  ## Get max leverage for Perpetual Futures USDT based on ticker,
+  ## this info can be obtained via API but this saves some requests,
+  ## it is unlikely to change too frequently anyways.
+  case ticker
+  of "BTCUSDT": 125
+  of "ETHUSDT": 100
+  of "BNBUSDT", "BCHUSDT", "XRPUSDT", "EOSUSDT", "LTCUSDT", "ETCUSDT", "LINKUSDT", "ADAUSDT", "TRXUSDT": 75
+  of "ALGOUSDT", "ATOMUSDT", "BSVUSDT", "DOGEUSDT", "DOTUSDT", "EGLDUSDT", "FILUSDT", "HNTUSDT", "ICPUSDT", "KSMUSDT", "MATICUSDT", "NEOUSDT", "QTUMUSDT", "RUNEUSDT", "SOLUSDT", "SRMUSDT", "SUSHIUSDT", "UNIUSDT", "XLMUSDT", "XMRUSDT", "XTZUSDT", "ZECUSDT": 50
+  of "BTCDOMUSDT": 20
+  else: 25  # "YFIUSDT", "MKRUSDT", "XMRUSDT", etc
+
+
+template getMinQuantity*(ticker: string): float =
+  ## Get minimum quantity for Perpetual Futures USDT based on ticker,
+  ## this info can be obtained via API but this saves some requests,
+  ## it is unlikely to change too frequently anyways.
+  case ticker
+  of "DOGEUSDT": 100.0
+  of "XMRUSDT": 0.035
+  of "BTCDOMUSDT": 0.005
+  of "MKRUSDT": 0.006
+  of "ALGOUSDT", "MATICUSDT": 1.0
+  of "XLMUSDT", "ADAUSDT", "XRPUSDT": 10.0
+  of "BTCUSDT", "YFIUSDT", "BCHUSDT": 0.001
+  of "ETHUSDT", "LTCUPUSDT", "LTCUSDT": 0.01
+  of "BNBUSDT", "DOTUSDT", "SOLUSDT", "LINKUSDT", "AVAXUSDT", "ATOMUSDT", "FILUSDT", "UNIUSDT", "ETCUSDT": 0.1
+  else: 0.001
+
+
 runnableExamples"-d:ssl -d:nimDisableCertificateValidation -r:off":
   import std/[httpcore, json]
   let client: Binance = newBinance("YOUR_BINANCE_API_KEY", "YOUR_BINANCE_API_SECRET")
