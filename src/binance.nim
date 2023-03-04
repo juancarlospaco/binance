@@ -1084,7 +1084,7 @@ template getMinQuantity*(ticker: string): float =
   ## this info can be obtained via API but this saves some requests,
   ## it is unlikely to change too frequently anyways.
   case ticker
-  of "DOGEUSDT": 100.0
+  of "DOGEUSDT": 75.0
   of "XMRUSDT": 0.035
   of "BTCDOMUSDT": 0.005
   of "MKRUSDT": 0.006
