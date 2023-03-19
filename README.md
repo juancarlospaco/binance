@@ -27,8 +27,7 @@
 
 - Some USDT in Binance Spot wallet to trade with, >10 USDT minimal, >100 USDT recommended.
 - Some BNB coins in Binance Spot wallet for commisions, >1 USD in BNB minimal, >10 USD in BNB recommended.
-- Some USDT in Binance Futures USD-M wallet to trade with, >100 USDT minimal, >1000 USDT recommended, for NO Leverage (1x).
-- Some USDT in Binance Futures USD-M wallet to trade with, >1000 USDT minimal, >10000 USDT recommended, for Leverage (125x).
+- Some USDT in Binance Futures USD-M wallet to trade with, >100 USDT minimal, >1000 USDT recommended.
 - Some BNB coins in Binance Spot wallet for commisions, >1 USD in BNB minimal, >10 USD in BNB recommended.
 - If you are reading this after year 2023, the web of Binance for the API Keys has changed, but it still works.
 
@@ -189,11 +188,11 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@Parzivalcen](https://github.com/Parzivalcen '2022-04-06')
 :star: [@hugosenari](https://github.com/hugosenari '2022-05-28')
 :star: [@RodrigoTorresWeb](https://github.com/RodrigoTorresWeb '2022-06-25')
-:star: [@villawolfpy](https://github.com/villawolfpy '2022-07-11')	
-:star: [@frankmoshe](https://github.com/frankmoshe '2022-07-13')	
-:star: [@lf-araujo](https://github.com/lf-araujo '2022-07-28')	
-:star: [@badsector666](https://github.com/badsector666 '2022-09-24')	
-:star: [@Hamzadutsher](https://github.com/Hamzadutsher '2022-10-03')	
-:star: [@Kensingtonn](https://github.com/Kensingtonn '2022-11-09')	
-:star: [@ccamateur](https://github.com/ccamateur '2022-12-28')	
-:star: [@hienpro00123](https://github.com/hienpro00123 '2023-01-09')	
+:star: [@villawolfpy](https://github.com/villawolfpy '2022-07-11')
+:star: [@frankmoshe](https://github.com/frankmoshe '2022-07-13')
+:star: [@lf-araujo](https://github.com/lf-araujo '2022-07-28')
+:star: [@badsector666](https://github.com/badsector666 '2022-09-24')
+:star: [@Hamzadutsher](https://github.com/Hamzadutsher '2022-10-03')
+:star: [@Kensingtonn](https://github.com/Kensingtonn '2022-11-09')
+:star: [@ccamateur](https://github.com/ccamateur '2022-12-28')
+:star: [@hienpro00123](https://github.com/hienpro00123 '2023-01-09')
