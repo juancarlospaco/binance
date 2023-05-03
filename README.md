@@ -199,3 +199,4 @@ WM54DHVZQIQDVTHMPOH6FEZ4U2AU3OBPGAFTHSCYWMFE7ETKCUUOYAW24Q
 :star: [@moigagoo](https://github.com/moigagoo '2023-04-06')	
 :star: [@vegardsjo](https://github.com/vegardsjo '2023-04-12')	
 :star: [@serjepatoff](https://github.com/serjepatoff '2023-04-25')	
+:star: [@teroz](https://github.com/teroz '2023-05-03')	
